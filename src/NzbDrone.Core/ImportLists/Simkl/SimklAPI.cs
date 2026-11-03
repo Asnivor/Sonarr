@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.Serialization;
 using Newtonsoft.Json;
 
 namespace NzbDrone.Core.ImportLists.Simkl
@@ -11,6 +12,7 @@ namespace NzbDrone.Core.ImportLists.Simkl
         public string Imdb { get; set; }
         public string Tmdb { get; set; }
         public string Tvdb { get; set; }
+        public string Mal { get; set; }
     }
 
     public class SimklSeriesPropsResource
@@ -23,11 +25,15 @@ namespace NzbDrone.Core.ImportLists.Simkl
     public class SimklSeriesResource
     {
         public SimklSeriesPropsResource Show { get; set; }
+
+        [JsonProperty("anime_type")]
+        public SimklAnimeType AnimeType { get; set; }
     }
 
     public class SimklResponse
     {
         public List<SimklSeriesResource> Shows { get; set; }
+        public List<SimklSeriesResource> Anime { get; set; }
     }
 
     public class RefreshRequestResponse
@@ -60,10 +66,27 @@ namespace NzbDrone.Core.ImportLists.Simkl
     {
         [JsonProperty("tv_shows")]
         public SimklTvSyncActivityResource TvShows { get; set; }
+
+        [JsonProperty("anime")]
+        public SimklTvSyncActivityResource Anime { get; set; }
     }
 
     public class SimklTvSyncActivityResource
     {
         public DateTime All { get; set; }
+    }
+
+    [JsonConverter(typeof(TolerantEnumConverter))]
+    public enum SimklAnimeType
+    {
+        Unknown,
+        Tv,
+        Movie,
+        Ova,
+        Ona,
+        Special,
+
+        [EnumMember(Value = "music video")]
+        MusicVideo
     }
 }

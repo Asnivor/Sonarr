@@ -6,20 +6,23 @@ import DescriptionListItem from 'Components/DescriptionList/DescriptionListItem'
 import Icon from 'Components/Icon';
 import Popover from 'Components/Tooltip/Popover';
 import { icons, tooltipPositions } from 'Helpers/Props';
-import styles from './ReleaseSceneIndicator.css';
+import formatSeasonNumbers from 'Season/formatSeasonNumbers';
+import translate from 'Utilities/String/translate';
+import styles from './ReleaseSceneIndicator.module.css';
 
 function formatReleaseNumber(
-  seasonNumber: number | undefined,
+  seasonNumbers: number[],
   episodeNumbers: number[] | undefined,
   absoluteEpisodeNumbers: number[] | undefined
 ) {
   if (episodeNumbers && episodeNumbers.length) {
     if (episodeNumbers.length > 1) {
-      return `${seasonNumber}x${episodeNumbers[0]}-${
+      return `${seasonNumbers[0]}x${episodeNumbers[0]}-${
         episodeNumbers[episodeNumbers.length - 1]
       }`;
     }
-    return `${seasonNumber}x${episodeNumbers[0]}`;
+
+    return `${seasonNumbers[0]}x${episodeNumbers[0]}`;
   }
 
   if (absoluteEpisodeNumbers && absoluteEpisodeNumbers.length) {
@@ -28,11 +31,16 @@ function formatReleaseNumber(
         absoluteEpisodeNumbers[absoluteEpisodeNumbers.length - 1]
       }`;
     }
+
     return absoluteEpisodeNumbers[0];
   }
 
-  if (seasonNumber !== undefined) {
-    return `Season ${seasonNumber}`;
+  if (seasonNumbers.length > 1) {
+    return formatSeasonNumbers(seasonNumbers);
+  }
+
+  if (seasonNumbers.length === 1) {
+    return translate('SeasonNumberToken', { seasonNumber: seasonNumbers[0] });
   }
 
   return null;
@@ -40,10 +48,10 @@ function formatReleaseNumber(
 
 interface ReleaseSceneIndicatorProps {
   className: string;
-  seasonNumber?: number;
+  seasonNumbers: number[];
   episodeNumbers?: number[];
   absoluteEpisodeNumbers?: number[];
-  sceneSeasonNumber?: number;
+  sceneSeasonNumbers: number[];
   sceneEpisodeNumbers?: number[];
   sceneAbsoluteEpisodeNumbers?: number[];
   sceneMapping?: {
@@ -58,10 +66,10 @@ interface ReleaseSceneIndicatorProps {
 function ReleaseSceneIndicator(props: ReleaseSceneIndicatorProps) {
   const {
     className,
-    seasonNumber,
+    seasonNumbers,
     episodeNumbers,
     absoluteEpisodeNumbers,
-    sceneSeasonNumber,
+    sceneSeasonNumbers,
     sceneEpisodeNumbers,
     sceneAbsoluteEpisodeNumbers,
     sceneMapping = {},
@@ -75,8 +83,7 @@ function ReleaseSceneIndicator(props: ReleaseSceneIndicatorProps) {
     return null;
   }
 
-  let mappingDifferent =
-    sceneSeasonNumber !== undefined && seasonNumber !== sceneSeasonNumber;
+  let mappingDifferent = !_.isEqual(sceneSeasonNumbers, seasonNumbers);
 
   if (sceneEpisodeNumbers !== undefined) {
     mappingDifferent =
@@ -92,12 +99,12 @@ function ReleaseSceneIndicator(props: ReleaseSceneIndicatorProps) {
   }
 
   const releaseNumber = formatReleaseNumber(
-    sceneSeasonNumber,
+    sceneSeasonNumbers,
     sceneEpisodeNumbers,
     sceneAbsoluteEpisodeNumbers
   );
   const mappedNumber = formatReleaseNumber(
-    seasonNumber,
+    seasonNumbers,
     episodeNumbers,
     absoluteEpisodeNumbers
   );
@@ -112,22 +119,29 @@ function ReleaseSceneIndicator(props: ReleaseSceneIndicatorProps) {
     level = styles.levelMixed;
     messages.push(
       <div key="source">
-        {comment ?? 'Source'} releases exist with ambiguous numbering, unable to
-        reliably identify episode.
+        {translate('ReleaseSceneIndicatorSourceMessage', {
+          message: comment ?? 'Source',
+        })}
       </div>
     );
   } else if (isUnknown) {
     level = styles.levelUnknown;
     messages.push(
       <div key="unknown">
-        Numbering varies for this episode and release does not match any known
-        mappings.
+        {translate('ReleaseSceneIndicatorUnknownMessage')}
       </div>
     );
+
     if (sceneOrigin === 'unknown') {
-      messages.push(<div key="origin">Assuming Scene numbering.</div>);
+      messages.push(
+        <div key="origin">
+          {translate('ReleaseSceneIndicatorAssumingScene')}.
+        </div>
+      );
     } else if (sceneOrigin === 'unknown:tvdb') {
-      messages.push(<div key="origin">Assuming TheTVDB numbering.</div>);
+      messages.push(
+        <div key="origin">{translate('ReleaseSceneIndicatorAssumingTvdb')}</div>
+      );
     }
   } else if (mappingDifferent) {
     level = styles.levelMapped;
@@ -139,14 +153,19 @@ function ReleaseSceneIndicator(props: ReleaseSceneIndicatorProps) {
     if (!isMixed && !isUnknown) {
       level = styles.levelNotRequested;
     }
+
     if (mappedNumber) {
       messages.push(
         <div key="not-requested">
-          Mapped episode wasn't requested in this search.
+          {translate('ReleaseSceneIndicatorMappedNotRequested')}
         </div>
       );
     } else {
-      messages.push(<div key="unknown-series">Unknown episode or series.</div>);
+      messages.push(
+        <div key="unknown-series">
+          {translate('ReleaseSceneIndicatorUnknownSeries')}
+        </div>
+      );
     }
   }
 
@@ -156,7 +175,7 @@ function ReleaseSceneIndicator(props: ReleaseSceneIndicatorProps) {
         <DescriptionListItem
           titleClassName={styles.title}
           descriptionClassName={styles.description}
-          title="Mapping"
+          title={translate('Mapping')}
           data={comment}
         />
       )}
@@ -165,7 +184,7 @@ function ReleaseSceneIndicator(props: ReleaseSceneIndicatorProps) {
         <DescriptionListItem
           titleClassName={styles.title}
           descriptionClassName={styles.description}
-          title="Title"
+          title={translate('Title')}
           data={title}
         />
       )}
@@ -174,7 +193,7 @@ function ReleaseSceneIndicator(props: ReleaseSceneIndicatorProps) {
         <DescriptionListItem
           titleClassName={styles.title}
           descriptionClassName={styles.description}
-          title="Release"
+          title={translate('Release')}
           data={releaseNumber ?? 'unknown'}
         />
       )}
@@ -183,7 +202,7 @@ function ReleaseSceneIndicator(props: ReleaseSceneIndicatorProps) {
         <DescriptionListItem
           titleClassName={styles.title}
           descriptionClassName={styles.description}
-          title="TheTVDB"
+          title={translate('TheTvdb')}
           data={mappedNumber ?? 'unknown'}
         />
       )}
@@ -197,7 +216,7 @@ function ReleaseSceneIndicator(props: ReleaseSceneIndicatorProps) {
           <Icon name={icons.SCENE_MAPPING} />
         </div>
       }
-      title="Scene Info"
+      title={translate('SceneInfo')}
       body={
         <div>
           {table}

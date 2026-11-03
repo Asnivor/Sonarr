@@ -8,7 +8,6 @@ namespace NzbDrone.Core.ImportLists.Trakt.Popular
     public class TraktPopularParser : TraktParser
     {
         private readonly TraktPopularSettings _settings;
-        private ImportListResponse _importResponse;
 
         public TraktPopularParser(TraktPopularSettings settings)
         {
@@ -17,35 +16,28 @@ namespace NzbDrone.Core.ImportLists.Trakt.Popular
 
         public override IList<ImportListItemInfo> ParseResponse(ImportListResponse importResponse)
         {
-            _importResponse = importResponse;
-
             var listItems = new List<ImportListItemInfo>();
 
-            if (!PreProcess(_importResponse))
+            if (!PreProcess(importResponse))
             {
                 return listItems;
             }
 
-            var jsonResponse = new List<TraktSeriesResource>();
-
-            if (_settings.TraktListType == (int)TraktPopularListType.Popular)
+            var traktSeries = _settings.TraktListType switch
             {
-                jsonResponse = STJson.Deserialize<List<TraktSeriesResource>>(_importResponse.Content);
-            }
-            else
-            {
-                jsonResponse = STJson.Deserialize<List<TraktResponse>>(_importResponse.Content).SelectList(c => c.Show);
-            }
+                (int)TraktPopularListType.Popular => STJson.Deserialize<List<TraktSeriesResource>>(importResponse.HttpResponse.ResponseData),
+                _ => STJson.Deserialize<List<TraktResponse>>(importResponse.HttpResponse.ResponseData).SelectList(c => c.Show)
+            };
 
-            // no movies were return
-            if (jsonResponse == null)
+            // no series were returned
+            if (traktSeries == null)
             {
                 return listItems;
             }
 
-            foreach (var series in jsonResponse)
+            foreach (var series in traktSeries)
             {
-                listItems.AddIfNotNull(new ImportListItemInfo()
+                listItems.AddIfNotNull(new ImportListItemInfo
                 {
                     Title = series.Title,
                     TvdbId = series.Ids.Tvdb.GetValueOrDefault(),

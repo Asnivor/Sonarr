@@ -40,103 +40,32 @@ namespace NzbDrone.Core.Tv
                 return;
             }
 
-            var firstSeason = series.Seasons.Select(s => s.SeasonNumber).Where(s => s > 0).MinOrDefault();
-            var lastSeason = series.Seasons.Select(s => s.SeasonNumber).MaxOrDefault();
-            var episodes = _episodeService.GetEpisodeBySeries(series.Id);
-
-            switch (monitoringOptions.Monitor)
+            // Skip episode level monitoring and use season information when series was added
+            if (monitoringOptions.Monitor == MonitorTypes.Skip)
             {
-                case MonitorTypes.All:
-                    _logger.Debug("[{0}] Monitoring all episodes", series.Title);
-                    ToggleEpisodesMonitoredState(episodes, e => e.SeasonNumber > 0);
-
-                    break;
-
-                case MonitorTypes.Future:
-                    _logger.Debug("[{0}] Monitoring future episodes", series.Title);
-                    ToggleEpisodesMonitoredState(episodes, e => e.SeasonNumber > 0 && (!e.AirDateUtc.HasValue || e.AirDateUtc >= DateTime.UtcNow));
-
-                    break;
-
-                case MonitorTypes.Missing:
-                    _logger.Debug("[{0}] Monitoring missing episodes", series.Title);
-                    ToggleEpisodesMonitoredState(episodes, e => e.SeasonNumber > 0 && !e.HasFile);
-
-                    break;
-
-                case MonitorTypes.Existing:
-                    _logger.Debug("[{0}] Monitoring existing episodes", series.Title);
-                    ToggleEpisodesMonitoredState(episodes, e => e.SeasonNumber > 0 && e.HasFile);
-
-                    break;
-
-                case MonitorTypes.Pilot:
-                    _logger.Debug("[{0}] Monitoring first episode episodes", series.Title);
-                    ToggleEpisodesMonitoredState(episodes,
-                        e => e.SeasonNumber > 0 && e.SeasonNumber == firstSeason && e.EpisodeNumber == 1);
-
-                    break;
-
-                case MonitorTypes.FirstSeason:
-                    _logger.Debug("[{0}] Monitoring first season episodes", series.Title);
-                    ToggleEpisodesMonitoredState(episodes, e => e.SeasonNumber > 0 && e.SeasonNumber == firstSeason);
-
-                    break;
-
-                case MonitorTypes.LatestSeason:
-                    if (episodes.Where(e => e.SeasonNumber == lastSeason)
-                                .All(e => e.AirDateUtc.HasValue &&
-                                          e.AirDateUtc.Value.Before(DateTime.UtcNow) &&
-                                          !e.AirDateUtc.Value.InLastDays(90)))
-                    {
-                        _logger.Debug("[{0}] Unmonitoring all episodes because latest season aired more than 90 days ago", series.Title);
-                        ToggleEpisodesMonitoredState(episodes, e => false);
-                        break;
-                    }
-
-                    _logger.Debug("[{0}] Monitoring latest season episodes", series.Title);
-
-                    ToggleEpisodesMonitoredState(episodes, e => e.SeasonNumber > 0 && e.SeasonNumber == lastSeason);
-
-                    break;
-
-                case MonitorTypes.MonitorSpecials:
-                    _logger.Debug("[{0}] Monitoring special episodes", series.Title);
-                    ToggleEpisodesMonitoredState(episodes.Where(e => e.SeasonNumber == 0), true);
-
-                    break;
-
-                case MonitorTypes.UnmonitorSpecials:
-                    _logger.Debug("[{0}] Unmonitoring special episodes", series.Title);
-                    ToggleEpisodesMonitoredState(episodes.Where(e => e.SeasonNumber == 0), false);
-
-                    break;
-
-                case MonitorTypes.None:
-                    _logger.Debug("[{0}] Unmonitoring all episodes", series.Title);
-                    ToggleEpisodesMonitoredState(episodes, e => false);
-
-                    break;
+                return;
             }
 
-            var monitoredSeasons = episodes.Where(e => e.Monitored)
-                                           .Select(e => e.SeasonNumber)
-                                           .Distinct()
-                                           .ToList();
+            var firstSeason = series.Seasons.Select(s => s.SeasonNumber).Where(s => s > 0).MinOrDefault();
+            var lastSeason = series.Seasons.Select(s => s.SeasonNumber).MaxOrDefault();
+
+            _logger.Debug("[{0}] Setting episode monitored status to {1}", series.Title, monitoringOptions.Monitor);
+
+            var monitoredSeasons = _episodeService.SetEpisodeMonitoredBySeries(series.Id, monitoringOptions.Monitor, firstSeason, lastSeason);
 
             foreach (var season in series.Seasons)
             {
                 var seasonNumber = season.SeasonNumber;
 
-                // Monitor the season when:
+                // Monitor the last season when:
                 // - Not specials
                 // - The latest season
-                // - Not only supposed to monitor the first season
+                // - Set to monitor all episodes
+                // - Set to monitor future episodes and series is continuing or not yet aired
                 if (seasonNumber > 0 &&
                     seasonNumber == lastSeason &&
-                    monitoringOptions.Monitor != MonitorTypes.FirstSeason &&
-                    monitoringOptions.Monitor != MonitorTypes.Pilot &&
-                    monitoringOptions.Monitor != MonitorTypes.None)
+                    (monitoringOptions.Monitor == MonitorTypes.All ||
+                     (monitoringOptions.Monitor == MonitorTypes.Future && series.Status is SeriesStatusType.Continuing or SeriesStatusType.Upcoming)))
                 {
                     season.Monitored = true;
                 }
@@ -158,7 +87,6 @@ namespace NzbDrone.Core.Tv
                 }
             }
 
-            _episodeService.UpdateEpisodes(episodes);
             _seriesService.UpdateSeries(series, false);
         }
 

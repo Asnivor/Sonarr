@@ -1,5 +1,5 @@
 import React from 'react';
-import { useSelector } from 'react-redux';
+import Alert from 'Components/Alert';
 import Form from 'Components/Form/Form';
 import Button from 'Components/Link/Button';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
@@ -8,7 +8,8 @@ import ModalContent from 'Components/Modal/ModalContent';
 import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
 import DownloadProtocol from 'DownloadClient/DownloadProtocol';
-import createEnabledDownloadClientsSelector from 'Store/Selectors/createEnabledDownloadClientsSelector';
+import { kinds } from 'Helpers/Props';
+import { useEnabledDownloadClients } from 'Settings/DownloadClients/DownloadClients/useDownloadClients';
 import translate from 'Utilities/String/translate';
 import SelectDownloadClientRow from './SelectDownloadClientRow';
 
@@ -24,24 +25,27 @@ function SelectDownloadClientModalContent(
 ) {
   const { modalTitle, protocol, onDownloadClientSelect, onModalClose } = props;
 
-  const { isFetching, isPopulated, error, items } = useSelector(
-    createEnabledDownloadClientsSelector(protocol)
-  );
+  const { isFetching, isFetched, error, data } =
+    useEnabledDownloadClients(protocol);
 
   return (
     <ModalContent onModalClose={onModalClose}>
-      <ModalHeader>{modalTitle} - Select Download Client</ModalHeader>
+      <ModalHeader>
+        {translate('SelectDownloadClientModalTitle', { modalTitle })}
+      </ModalHeader>
 
       <ModalBody>
         {isFetching ? <LoadingIndicator /> : null}
 
         {!isFetching && error ? (
-          <div>Unable to load download clients</div>
+          <Alert kind={kinds.DANGER}>
+            {translate('DownloadClientsLoadError')}
+          </Alert>
         ) : null}
 
-        {isPopulated && !error ? (
+        {isFetched && !error ? (
           <Form>
-            {items.map((downloadClient) => {
+            {data.map((downloadClient) => {
               const { id, name, priority } = downloadClient;
 
               return (

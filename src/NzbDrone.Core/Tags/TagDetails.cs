@@ -10,11 +10,21 @@ namespace NzbDrone.Core.Tags
         public List<int> SeriesIds { get; set; }
         public List<int> NotificationIds { get; set; }
         public List<int> RestrictionIds { get; set; }
+        public List<int> ExcludedReleaseProfileIds { get; set; }
         public List<int> DelayProfileIds { get; set; }
         public List<int> ImportListIds { get; set; }
         public List<int> IndexerIds { get; set; }
         public List<int> AutoTagIds { get; set; }
+        public List<int> DownloadClientIds { get; set; }
 
-        public bool InUse => SeriesIds.Any() || NotificationIds.Any() || RestrictionIds.Any() || DelayProfileIds.Any() || ImportListIds.Any() || IndexerIds.Any() || AutoTagIds.Any();
+        public bool InUse => SeriesIds.Any() ||
+                             NotificationIds.Any() ||
+                             RestrictionIds.Any() ||
+                             ExcludedReleaseProfileIds.Any() ||
+                             DelayProfileIds.Any() ||
+                             ImportListIds.Any() ||
+                             IndexerIds.Any() ||
+                             AutoTagIds.Any() ||
+                             DownloadClientIds.Any();
     }
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using FluentAssertions;
@@ -57,7 +57,7 @@ namespace NzbDrone.Core.Test
         [Test]
         public void ToBestDateTime_DayOfWeek()
         {
-            for (int i = 2; i < 7; i++)
+            for (var i = 2; i < 7; i++)
             {
                 var dateTime = DateTime.Today.AddDays(i);
 
@@ -175,7 +175,9 @@ namespace NzbDrone.Core.Test
         [TestCase(199, 100, 100)]
         [TestCase(1000, 100, 1000)]
         [TestCase(0, 100, 0)]
-        public void round_to_level(long number, int level, int result)
+        [TestCase(long.MinValue, 1000, -9223372036854775000L)]
+        [TestCase(long.MaxValue, 1000, 9223372036854775000L)]
+        public void round_to_level(long number, int level, long result)
         {
             number.Round(level).Should().Be(result);
         }

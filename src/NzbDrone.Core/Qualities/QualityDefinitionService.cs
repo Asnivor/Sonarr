@@ -47,6 +47,7 @@ namespace NzbDrone.Core.Qualities
         public void UpdateMany(List<QualityDefinition> qualityDefinitions)
         {
             _repo.UpdateMany(qualityDefinitions);
+            _cache.Clear();
         }
 
         public List<QualityDefinition> All()
@@ -66,8 +67,8 @@ namespace NzbDrone.Core.Qualities
 
         private void InsertMissingDefinitions()
         {
-            List<QualityDefinition> insertList = new List<QualityDefinition>();
-            List<QualityDefinition> updateList = new List<QualityDefinition>();
+            var insertList = new List<QualityDefinition>();
+            var updateList = new List<QualityDefinition>();
 
             var allDefinitions = Quality.DefaultQualityDefinitions.OrderBy(d => d.Weight).ToList();
             var existingDefinitions = _repo.All().ToList();
@@ -110,7 +111,7 @@ namespace NzbDrone.Core.Qualities
 
         public void Execute(ResetQualityDefinitionsCommand message)
         {
-            List<QualityDefinition> updateList = new List<QualityDefinition>();
+            var updateList = new List<QualityDefinition>();
 
             var allDefinitions = Quality.DefaultQualityDefinitions.OrderBy(d => d.Weight).ToList();
             var existingDefinitions = _repo.All().ToList();
@@ -119,8 +120,6 @@ namespace NzbDrone.Core.Qualities
             {
                 var existing = existingDefinitions.SingleOrDefault(d => d.Quality == definition.Quality);
 
-                existing.MinSize = definition.MinSize;
-                existing.MaxSize = definition.MaxSize;
                 existing.Title = message.ResetTitles ? definition.Title : existing.Title;
 
                 updateList.Add(existing);

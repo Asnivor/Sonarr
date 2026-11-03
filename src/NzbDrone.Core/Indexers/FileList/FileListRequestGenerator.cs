@@ -103,6 +103,17 @@ namespace NzbDrone.Core.Indexers.FileList
             return pageableRequests;
         }
 
+        public IndexerPageableRequestChain GetSearchRequests(AnimeSeasonSearchCriteria searchCriteria)
+        {
+            var pageableRequests = new IndexerPageableRequestChain();
+
+            AddImdbRequests(pageableRequests, searchCriteria, "search-torrents", Settings.AnimeCategories, $"&season={searchCriteria.SeasonNumber}");
+            pageableRequests.AddTier();
+            AddNameRequests(pageableRequests, searchCriteria, "search-torrents", Settings.AnimeCategories, $"&season={searchCriteria.SeasonNumber}");
+
+            return pageableRequests;
+        }
+
         public IndexerPageableRequestChain GetSearchRequests(SpecialEpisodeSearchCriteria searchCriteria)
         {
             return new IndexerPageableRequestChain();
@@ -126,6 +137,11 @@ namespace NzbDrone.Core.Indexers.FileList
 
         private IEnumerable<IndexerRequest> GetRequest(string searchType, IEnumerable<int> categories, string parameters)
         {
+            if (categories.Empty())
+            {
+                yield break;
+            }
+
             var categoriesQuery = string.Join(",", categories.Distinct());
 
             var baseUrl = string.Format("{0}/api.php?action={1}&category={2}{3}", Settings.BaseUrl.TrimEnd('/'), searchType, categoriesQuery, parameters);

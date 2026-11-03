@@ -29,7 +29,7 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.Blackhole
                 .Returns(new[] { targetDir });
 
             Mocker.GetMock<IDiskProvider>()
-                .Setup(c => c.GetFiles(targetDir, SearchOption.AllDirectories))
+                .Setup(c => c.GetFiles(targetDir, true))
                 .Returns(new[] { Path.Combine(targetDir, "somefile.mkv") });
 
             Mocker.GetMock<IDiskProvider>()
@@ -79,7 +79,7 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.Blackhole
             VerifySingleItem(DownloadItemStatus.Downloading);
 
             // If we keep changing the file every 20ms we should stay Downloading.
-            for (int i = 0; i < 10; i++)
+            for (var i = 0; i < 10; i++)
             {
                 TestLogger.Info("Iteration {0}", i);
 
@@ -94,6 +94,23 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.Blackhole
             Thread.Sleep(60);
 
             VerifySingleItem(DownloadItemStatus.Completed);
+        }
+
+        [TestCase("@eaDir")]
+        [TestCase(".@__thumb")]
+        public void GetItems_should_not_include_special_subfolders(string folderName)
+        {
+            GivenCompletedItem();
+
+            var targetDir = Path.Combine(_completedDownloadFolder, folderName);
+
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(c => c.GetDirectories(_completedDownloadFolder))
+                .Returns(new[] { targetDir });
+
+            var items = Subject.GetItems(_completedDownloadFolder, TimeSpan.FromMilliseconds(50)).ToList();
+
+            items.Count.Should().Be(0);
         }
     }
 }

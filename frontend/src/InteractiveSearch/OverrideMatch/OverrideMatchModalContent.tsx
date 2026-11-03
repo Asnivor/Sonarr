@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
 import DescriptionList from 'Components/DescriptionList/DescriptionList';
 import DescriptionListItem from 'Components/DescriptionList/DescriptionListItem';
 import Button from 'Components/Link/Button';
@@ -18,18 +17,18 @@ import SelectLanguageModal from 'InteractiveImport/Language/SelectLanguageModal'
 import SelectQualityModal from 'InteractiveImport/Quality/SelectQualityModal';
 import SelectSeasonModal from 'InteractiveImport/Season/SelectSeasonModal';
 import SelectSeriesModal from 'InteractiveImport/Series/SelectSeriesModal';
-import ReleaseEpisode from 'InteractiveSearch/ReleaseEpisode';
+import { ReleaseEpisode, useGrabRelease } from 'InteractiveSearch/useReleases';
 import Language from 'Language/Language';
 import { QualityModel } from 'Quality/Quality';
+import formatSeasonNumbers from 'Season/formatSeasonNumbers';
 import Series from 'Series/Series';
-import { grabRelease } from 'Store/Actions/releaseActions';
-import { fetchDownloadClients } from 'Store/Actions/settingsActions';
-import createEnabledDownloadClientsSelector from 'Store/Selectors/createEnabledDownloadClientsSelector';
-import { createSeriesSelectorForHook } from 'Store/Selectors/createSeriesSelector';
+import { useSingleSeries } from 'Series/useSeries';
+import { useEnabledDownloadClients } from 'Settings/DownloadClients/DownloadClients/useDownloadClients';
+import padNumber from 'Utilities/Number/padNumber';
 import translate from 'Utilities/String/translate';
 import SelectDownloadClientModal from './DownloadClient/SelectDownloadClientModal';
 import OverrideMatchData from './OverrideMatchData';
-import styles from './OverrideMatchModalContent.css';
+import styles from './OverrideMatchModalContent.module.css';
 
 type SelectType =
   | 'select'
@@ -40,23 +39,23 @@ type SelectType =
   | 'language'
   | 'downloadClient';
 
-interface OverrideMatchModalContentProps {
+export interface OverrideMatchModalContentProps {
   indexerId: number;
   title: string;
   guid: string;
   seriesId?: number;
-  seasonNumber?: number;
   episodes: ReleaseEpisode[];
   languages: Language[];
   quality: QualityModel;
   protocol: DownloadProtocol;
   isGrabbing: boolean;
   grabError?: string;
+  grabRelease: ReturnType<typeof useGrabRelease>['grabRelease'];
   onModalClose(): void;
 }
 
 function OverrideMatchModalContent(props: OverrideMatchModalContentProps) {
-  const modalTitle = 'Manual Grab';
+  const modalTitle = translate('ManualGrab');
   const {
     indexerId,
     title,
@@ -64,11 +63,16 @@ function OverrideMatchModalContent(props: OverrideMatchModalContentProps) {
     protocol,
     isGrabbing,
     grabError,
+    grabRelease,
     onModalClose,
   } = props;
 
   const [seriesId, setSeriesId] = useState(props.seriesId);
-  const [seasonNumber, setSeasonNumber] = useState(props.seasonNumber);
+  const [seasonNumbers, setSeasonNumbers] = useState(() =>
+    [...new Set(props.episodes.map((e) => e.seasonNumber))].sort(
+      (a, b) => a - b
+    )
+  );
   const [episodes, setEpisodes] = useState(props.episodes);
   const [languages, setLanguages] = useState(props.languages);
   const [quality, setQuality] = useState(props.quality);
@@ -79,25 +83,18 @@ function OverrideMatchModalContent(props: OverrideMatchModalContentProps) {
   );
   const previousIsGrabbing = usePrevious(isGrabbing);
 
-  const dispatch = useDispatch();
-  const series: Series | undefined = useSelector(
-    createSeriesSelectorForHook(seriesId)
-  );
-  const { items: downloadClients } = useSelector(
-    createEnabledDownloadClientsSelector(protocol)
-  );
+  const series: Series | undefined = useSingleSeries(seriesId);
+  const { data: downloadClients } = useEnabledDownloadClients(protocol);
 
   const episodeInfo = useMemo(() => {
     return episodes.map((episode) => {
       return (
         <div key={episode.id}>
-          {episode.episodeNumber}
-
+          {episode.seasonNumber}x{padNumber(episode.episodeNumber, 2)}
           {series?.seriesType === 'anime' &&
           episode.absoluteEpisodeNumber != null
             ? ` (${episode.absoluteEpisodeNumber})`
             : ''}
-
           {` - ${episode.title}`}
         </div>
       );
@@ -115,24 +112,24 @@ function OverrideMatchModalContent(props: OverrideMatchModalContentProps) {
   const onSeriesSelect = useCallback(
     (s: Series) => {
       setSeriesId(s.id);
-      setSeasonNumber(undefined);
+      setSeasonNumbers([]);
       setEpisodes([]);
       setSelectModalOpen(null);
     },
-    [setSeriesId, setSeasonNumber, setEpisodes, setSelectModalOpen]
+    [setSeriesId, setSeasonNumbers, setEpisodes, setSelectModalOpen]
   );
 
   const onSelectSeasonPress = useCallback(() => {
     setSelectModalOpen('season');
   }, [setSelectModalOpen]);
 
-  const onSeasonSelect = useCallback(
-    (s: number) => {
-      setSeasonNumber(s);
+  const onSeasonsSelect = useCallback(
+    (s: number[]) => {
+      setSeasonNumbers(s);
       setEpisodes([]);
       setSelectModalOpen(null);
     },
-    [setSeasonNumber, setEpisodes, setSelectModalOpen]
+    [setSeasonNumbers, setEpisodes, setSelectModalOpen]
   );
 
   const onSelectEpisodePress = useCallback(() => {
@@ -185,31 +182,30 @@ function OverrideMatchModalContent(props: OverrideMatchModalContentProps) {
 
   const onGrabPress = useCallback(() => {
     if (!seriesId) {
-      setError('Series must be selected');
+      setError(translate('OverrideGrabNoSeries'));
       return;
     } else if (!episodes.length) {
-      setError('At least one episode must be selected');
+      setError(translate('OverrideGrabNoEpisode'));
       return;
     } else if (!quality) {
-      setError('Quality must be selected');
+      setError(translate('OverrideGrabNoQuality'));
       return;
     } else if (!languages.length) {
-      setError('At least one language must be selected');
+      setError(translate('OverrideGrabNoLanguage'));
       return;
     }
 
-    dispatch(
-      grabRelease({
-        indexerId,
-        guid,
+    grabRelease({
+      indexerId,
+      guid,
+      override: {
         seriesId,
         episodeIds: episodes.map((e) => e.id),
         quality,
         languages,
         downloadClientId,
-        shouldOverride: true,
-      })
-    );
+      },
+    });
   }, [
     indexerId,
     guid,
@@ -219,7 +215,7 @@ function OverrideMatchModalContent(props: OverrideMatchModalContentProps) {
     languages,
     downloadClientId,
     setError,
-    dispatch,
+    grabRelease,
   ]);
 
   useEffect(() => {
@@ -228,25 +224,17 @@ function OverrideMatchModalContent(props: OverrideMatchModalContentProps) {
     }
   }, [isGrabbing, previousIsGrabbing, onModalClose]);
 
-  useEffect(
-    () => {
-      dispatch(fetchDownloadClients());
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
-
   return (
     <ModalContent onModalClose={onModalClose}>
       <ModalHeader>
-        {translate('Override and Grab - {title}', { title })}
+        {translate('OverrideGrabModalTitle', { title })}
       </ModalHeader>
 
       <ModalBody>
         <DescriptionList>
           <DescriptionListItem
             className={styles.item}
-            title={translate('Series')}
+            title={translate('SeriesSingular')}
             data={
               <OverrideMatchData
                 value={series?.title}
@@ -257,10 +245,14 @@ function OverrideMatchModalContent(props: OverrideMatchModalContentProps) {
 
           <DescriptionListItem
             className={styles.item}
-            title={translate('Season Number')}
+            title={translate('SeasonNumber')}
             data={
               <OverrideMatchData
-                value={seasonNumber}
+                value={
+                  seasonNumbers.length > 1
+                    ? formatSeasonNumbers(seasonNumbers)
+                    : seasonNumbers[0]
+                }
                 isDisabled={!series}
                 onPress={onSelectSeasonPress}
               />
@@ -273,7 +265,7 @@ function OverrideMatchModalContent(props: OverrideMatchModalContentProps) {
             data={
               <OverrideMatchData
                 value={episodeInfo}
-                isDisabled={!series || isNaN(Number(seasonNumber))}
+                isDisabled={!series || !seasonNumbers.length}
                 onPress={onSelectEpisodePress}
               />
             }
@@ -311,13 +303,13 @@ function OverrideMatchModalContent(props: OverrideMatchModalContentProps) {
           {downloadClients.length > 1 ? (
             <DescriptionListItem
               className={styles.item}
-              title={translate('Download Client')}
+              title={translate('DownloadClient')}
               data={
                 <OverrideMatchData
                   value={
                     downloadClients.find(
                       (downloadClient) => downloadClient.id === downloadClientId
-                    )?.name ?? 'Default'
+                    )?.name ?? translate('Default')
                   }
                   onPress={onSelectDownloadClientPress}
                 />
@@ -338,7 +330,7 @@ function OverrideMatchModalContent(props: OverrideMatchModalContentProps) {
             error={grabError}
             onPress={onGrabPress}
           >
-            {translate('Grab Release')}
+            {translate('GrabRelease')}
           </SpinnerErrorButton>
         </div>
       </ModalFooter>
@@ -354,7 +346,8 @@ function OverrideMatchModalContent(props: OverrideMatchModalContentProps) {
         isOpen={selectModalOpen === 'season'}
         modalTitle={modalTitle}
         seriesId={seriesId}
-        onSeasonSelect={onSeasonSelect}
+        selectedSeasonNumbers={seasonNumbers}
+        onSeasonsSelect={onSeasonsSelect}
         onModalClose={onSelectModalClose}
       />
 
@@ -363,7 +356,7 @@ function OverrideMatchModalContent(props: OverrideMatchModalContentProps) {
         selectedIds={[guid]}
         seriesId={seriesId}
         isAnime={series?.seriesType === 'anime'}
-        seasonNumber={seasonNumber}
+        seasonNumbers={seasonNumbers}
         selectedDetails={title}
         modalTitle={modalTitle}
         onEpisodesSelect={onEpisodesSelect}

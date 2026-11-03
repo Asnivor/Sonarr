@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using System.IO;
 using FluentMigrator;
 using NzbDrone.Core.Datastore.Migration.Framework;
@@ -12,7 +12,7 @@ namespace NzbDrone.Core.Datastore.Migration
         {
             Create.Column("RelativePath").OnTable("EpisodeFiles").AsString().Nullable();
 
-            // TODO: Add unique contraint for series ID and Relative Path
+            // TODO: Add unique constraint for series ID and Relative Path
             // TODO: Warn if multiple series share the same path
 
             Execute.WithConnection(UpdateRelativePaths);
@@ -20,21 +20,21 @@ namespace NzbDrone.Core.Datastore.Migration
 
         private void UpdateRelativePaths(IDbConnection conn, IDbTransaction tran)
         {
-            using (IDbCommand getSeriesCmd = conn.CreateCommand())
+            using (var getSeriesCmd = conn.CreateCommand())
             {
                 getSeriesCmd.Transaction = tran;
-                getSeriesCmd.CommandText = @"SELECT Id, Path FROM Series";
-                using (IDataReader seriesReader = getSeriesCmd.ExecuteReader())
+                getSeriesCmd.CommandText = "SELECT \"Id\", \"Path\" FROM \"Series\"";
+                using (var seriesReader = getSeriesCmd.ExecuteReader())
                 {
                     while (seriesReader.Read())
                     {
                         var seriesId = seriesReader.GetInt32(0);
                         var seriesPath = seriesReader.GetString(1) + Path.DirectorySeparatorChar;
 
-                        using (IDbCommand updateCmd = conn.CreateCommand())
+                        using (var updateCmd = conn.CreateCommand())
                         {
                             updateCmd.Transaction = tran;
-                            updateCmd.CommandText = "UPDATE EpisodeFiles SET RelativePath = REPLACE(Path, ?, '') WHERE SeriesId = ?";
+                            updateCmd.CommandText = "UPDATE \"EpisodeFiles\" SET \"RelativePath\" = REPLACE(\"Path\", ?, '') WHERE \"SeriesId\" = ?";
                             updateCmd.AddParameter(seriesPath);
                             updateCmd.AddParameter(seriesId);
 

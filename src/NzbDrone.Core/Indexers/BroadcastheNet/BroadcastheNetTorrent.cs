@@ -1,4 +1,6 @@
-﻿namespace NzbDrone.Core.Indexers.BroadcastheNet
+using System.Collections.Generic;
+
+namespace NzbDrone.Core.Indexers.BroadcastheNet
 {
     public class BroadcastheNetTorrent
     {
@@ -26,6 +28,7 @@
         public int? TvrageID { get; set; }
         public string ImdbID { get; set; }
         public string InfoHash { get; set; }
+        public List<string> Tags { get; set; }
         public string DownloadURL { get; set; }
     }
 }

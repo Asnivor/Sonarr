@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using NzbDrone.Core.Languages;
 using NzbDrone.Core.Tv;
 
 namespace Sonarr.Api.V3.Series
@@ -7,7 +8,9 @@ namespace Sonarr.Api.V3.Series
     {
         public List<int> SeriesIds { get; set; }
         public bool? Monitored { get; set; }
+        public NewItemMonitorTypes? MonitorNewItems { get; set; }
         public int? QualityProfileId { get; set; }
+        public Language Language { get; set; }
         public SeriesTypes? SeriesType { get; set; }
         public bool? SeasonFolder { get; set; }
         public string RootFolderPath { get; set; }
@@ -16,12 +19,5 @@ namespace Sonarr.Api.V3.Series
         public bool MoveFiles { get; set; }
         public bool DeleteFiles { get; set; }
         public bool AddImportListExclusion { get; set; }
-    }
-
-    public enum ApplyTags
-    {
-        Add,
-        Remove,
-        Replace
     }
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -52,7 +52,13 @@ namespace NzbDrone.Core.Download.Clients.Blackhole
         {
             foreach (var folder in _diskScanService.FilterPaths(watchFolder, _diskProvider.GetDirectories(watchFolder)))
             {
-                var title = FileNameBuilder.CleanFileName(Path.GetFileName(folder));
+                var folderName = Path.GetFileName(folder);
+                var title = FileNameBuilder.CleanFileName(folderName);
+
+                if (SpecialFolders.IsSpecialFolder(folderName))
+                {
+                    continue;
+                }
 
                 var newWatchItem = new WatchFolderItem
                 {
@@ -69,7 +75,7 @@ namespace NzbDrone.Core.Download.Clients.Blackhole
 
                 if (PreCheckWatchItemExpiry(newWatchItem, oldWatchItem))
                 {
-                    var files = _diskProvider.GetFiles(folder, SearchOption.AllDirectories);
+                    var files = _diskProvider.GetFiles(folder, true);
 
                     newWatchItem.TotalSize = files.Select(_diskProvider.GetFileSize).Sum();
                     newWatchItem.Hash = GetHash(folder, files);
@@ -153,7 +159,7 @@ namespace NzbDrone.Core.Download.Clients.Blackhole
             }
         }
 
-        private string GetHash(string folder, string[] files)
+        private string GetHash(string folder, IEnumerable<string> files)
         {
             var data = new StringBuilder();
 

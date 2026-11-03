@@ -1,6 +1,8 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Net.Http.Headers;
@@ -26,33 +28,52 @@ namespace Sonarr.Http.Frontend.Mappers
             _caseSensitive = RuntimeInfo.IsProduction ? DiskProviderBase.PathStringComparison : StringComparison.OrdinalIgnoreCase;
         }
 
-        public abstract string Map(string resourceUrl);
+        protected abstract string FolderPath { get; }
+        protected abstract string MapPath(string resourceUrl);
 
         public abstract bool CanHandle(string resourceUrl);
 
-        public IActionResult GetResponse(string resourceUrl)
+        public string Map(string resourceUrl)
+        {
+            var filePath = Path.GetFullPath(MapPath(resourceUrl));
+            var parentPath = Path.GetFullPath(FolderPath) + Path.DirectorySeparatorChar;
+
+            return filePath.StartsWith(parentPath) ? filePath : null;
+        }
+
+        public Task<IActionResult> GetResponse(HttpContext context, string resourceUrl)
         {
             var filePath = Map(resourceUrl);
 
-            if (_diskProvider.FileExists(filePath, _caseSensitive))
+            if (filePath == null)
+            {
+                return Task.FromResult<IActionResult>(null);
+            }
+
+            if (FileExists(filePath))
             {
                 if (!_mimeTypeProvider.TryGetContentType(filePath, out var contentType))
                 {
                     contentType = "application/octet-stream";
                 }
 
-                return new FileStreamResult(GetContentStream(filePath), new MediaTypeHeaderValue(contentType)
+                return Task.FromResult<IActionResult>(new FileStreamResult(GetContentStream(context, filePath), new MediaTypeHeaderValue(contentType)
                 {
                     Encoding = contentType == "text/plain" ? Encoding.UTF8 : null
-                });
+                }));
             }
 
             _logger.Warn("File {0} not found", filePath);
 
-            return null;
+            return Task.FromResult<IActionResult>(null);
         }
 
-        protected virtual Stream GetContentStream(string filePath)
+        protected virtual bool FileExists(string filePath)
+        {
+            return _diskProvider.FileExists(filePath, _caseSensitive);
+        }
+
+        protected virtual Stream GetContentStream(HttpContext context, string filePath)
         {
             return File.OpenRead(filePath);
         }

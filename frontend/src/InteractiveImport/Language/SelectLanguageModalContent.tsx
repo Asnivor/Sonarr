@@ -1,21 +1,20 @@
 import React, { useCallback, useState } from 'react';
-import { useSelector } from 'react-redux';
-import { createSelector } from 'reselect';
-import { LanguageSettingsAppState } from 'App/State/SettingsAppState';
+import Alert from 'Components/Alert';
 import Form from 'Components/Form/Form';
-import FormGroup from 'Components/Form/FormGroup';
-import FormInputGroup from 'Components/Form/FormInputGroup';
+import FormInput from 'Components/Form/FormInput';
 import FormLabel from 'Components/Form/FormLabel';
+import FormRow from 'Components/Form/FormRow';
 import Button from 'Components/Link/Button';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import ModalBody from 'Components/Modal/ModalBody';
 import ModalContent from 'Components/Modal/ModalContent';
 import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
-import { inputTypes, kinds, sizes } from 'Helpers/Props';
+import { inputTypes, kinds } from 'Helpers/Props';
 import Language from 'Language/Language';
-import createLanguagesSelector from 'Store/Selectors/createLanguagesSelector';
-import styles from './SelectLanguageModalContent.css';
+import { useFilteredLanguages } from 'Language/useLanguages';
+import translate from 'Utilities/String/translate';
+import styles from './SelectLanguageModalContent.module.css';
 
 interface SelectLanguageModalContentProps {
   languageIds: number[];
@@ -24,31 +23,18 @@ interface SelectLanguageModalContentProps {
   onModalClose(): void;
 }
 
-function createFilteredLanguagesSelector() {
-  return createSelector(createLanguagesSelector(), (languages) => {
-    const { isFetching, isPopulated, error, items } =
-      languages as LanguageSettingsAppState;
-
-    const filterItems = ['Any', 'Original'];
-    const filteredLanguages = items.filter(
-      (lang: Language) => !filterItems.includes(lang.name)
-    );
-
-    return {
-      isFetching,
-      isPopulated,
-      error,
-      items: filteredLanguages,
-    };
-  });
-}
-
 function SelectLanguageModalContent(props: SelectLanguageModalContentProps) {
   const { modalTitle, onLanguagesSelect, onModalClose } = props;
 
-  const { isFetching, isPopulated, error, items } = useSelector(
-    createFilteredLanguagesSelector()
-  );
+  const {
+    data: items = [],
+    isFetching,
+    isFetched: isPopulated,
+    error,
+  } = useFilteredLanguages({
+    Any: true,
+    Original: true,
+  });
 
   const [languageIds, setLanguageIds] = useState(props.languageIds);
 
@@ -77,30 +63,30 @@ function SelectLanguageModalContent(props: SelectLanguageModalContentProps) {
 
   return (
     <ModalContent onModalClose={onModalClose}>
-      <ModalHeader>{modalTitle} - Select Language</ModalHeader>
+      <ModalHeader>
+        {translate('SelectLanguageModalTitle', { modalTitle })}
+      </ModalHeader>
 
       <ModalBody>
         {isFetching ? <LoadingIndicator /> : null}
 
-        {!isFetching && error ? <div>Unable To Load Languages</div> : null}
+        {!isFetching && error ? (
+          <Alert kind={kinds.DANGER}>{translate('LanguagesLoadError')}</Alert>
+        ) : null}
 
         {isPopulated && !error ? (
           <Form>
             {items.map((language) => {
               return (
-                <FormGroup
-                  key={language.id}
-                  size={sizes.EXTRA_SMALL}
-                  className={styles.languageInput}
-                >
+                <FormRow key={language.id} className={styles.languageInput}>
                   <FormLabel>{language.name}</FormLabel>
-                  <FormInputGroup
+                  <FormInput
                     type={inputTypes.CHECK}
                     name={language.id.toString()}
                     value={languageIds.includes(language.id)}
                     onChange={onLanguageChange}
                   />
-                </FormGroup>
+                </FormRow>
               );
             })}
           </Form>
@@ -108,10 +94,10 @@ function SelectLanguageModalContent(props: SelectLanguageModalContentProps) {
       </ModalBody>
 
       <ModalFooter>
-        <Button onPress={onModalClose}>Cancel</Button>
+        <Button onPress={onModalClose}>{translate('Cancel')}</Button>
 
         <Button kind={kinds.SUCCESS} onPress={onLanguagesSelectWrapper}>
-          Select Languages
+          {translate('SelectLanguages')}
         </Button>
       </ModalFooter>
     </ModalContent>

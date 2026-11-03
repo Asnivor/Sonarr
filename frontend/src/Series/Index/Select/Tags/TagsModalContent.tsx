@@ -1,11 +1,12 @@
 import { uniq } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
-import { useSelector } from 'react-redux';
-import { Tag } from 'App/State/TagsAppState';
+import { useSelect } from 'App/Select/SelectContext';
 import Form from 'Components/Form/Form';
-import FormGroup from 'Components/Form/FormGroup';
-import FormInputGroup from 'Components/Form/FormInputGroup';
+import FormInput from 'Components/Form/FormInput';
+import FormInputHelpText from 'Components/Form/FormInputHelpText';
 import FormLabel from 'Components/Form/FormLabel';
+import FormRow from 'Components/Form/FormRow';
+import { EnhancedSelectInputValue } from 'Components/Form/Select/EnhancedSelectInput';
 import Label from 'Components/Label';
 import Button from 'Components/Link/Button';
 import ModalBody from 'Components/Modal/ModalBody';
@@ -14,38 +15,38 @@ import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
 import { inputTypes, kinds, sizes } from 'Helpers/Props';
 import Series from 'Series/Series';
-import createAllSeriesSelector from 'Store/Selectors/createAllSeriesSelector';
-import createTagsSelector from 'Store/Selectors/createTagsSelector';
-import styles from './TagsModalContent.css';
+import { useMultipleSeries } from 'Series/useSeries';
+import { useTagList } from 'Tags/useTags';
+import translate from 'Utilities/String/translate';
+import styles from './TagsModalContent.module.css';
 
-interface TagsModalContentProps {
-  seriesIds: number[];
+export interface TagsModalContentProps {
   onApplyTagsPress: (tags: number[], applyTags: string) => void;
   onModalClose: () => void;
 }
 
-function TagsModalContent(props: TagsModalContentProps) {
-  const { seriesIds, onModalClose, onApplyTagsPress } = props;
-
-  const allSeries: Series[] = useSelector(createAllSeriesSelector());
-  const tagList: Tag[] = useSelector(createTagsSelector());
-
+function TagsModalContent({
+  onModalClose,
+  onApplyTagsPress,
+}: TagsModalContentProps) {
+  const tagList = useTagList();
   const [tags, setTags] = useState<number[]>([]);
   const [applyTags, setApplyTags] = useState('add');
+  const { useSelectedIds } = useSelect<Series>();
+  const seriesIds = useSelectedIds();
+  const selectedSeries = useMultipleSeries(seriesIds);
 
   const seriesTags = useMemo(() => {
-    const tags = seriesIds.reduce((acc: number[], id) => {
-      const s = allSeries.find((s) => s.id === id);
-
-      if (s) {
-        acc.push(...s.tags);
+    const tags = selectedSeries.reduce((acc: number[], series) => {
+      if (series) {
+        acc.push(...series.tags);
       }
 
       return acc;
     }, []);
 
     return uniq(tags);
-  }, [seriesIds, allSeries]);
+  }, [selectedSeries]);
 
   const onTagsChange = useCallback(
     ({ value }: { value: number[] }) => {
@@ -65,49 +66,56 @@ function TagsModalContent(props: TagsModalContentProps) {
     onApplyTagsPress(tags, applyTags);
   }, [tags, applyTags, onApplyTagsPress]);
 
-  const applyTagsOptions = [
-    { key: 'add', value: 'Add' },
-    { key: 'remove', value: 'Remove' },
-    { key: 'replace', value: 'Replace' },
+  const applyTagsOptions: EnhancedSelectInputValue<string>[] = [
+    {
+      key: 'add',
+      value: translate('Add'),
+    },
+    {
+      key: 'remove',
+      value: translate('Remove'),
+    },
+    {
+      key: 'replace',
+      value: translate('Replace'),
+    },
   ];
 
   return (
     <ModalContent onModalClose={onModalClose}>
-      <ModalHeader>Tags</ModalHeader>
-
+      <ModalHeader>{translate('Tags')}</ModalHeader>
       <ModalBody>
         <Form>
-          <FormGroup>
-            <FormLabel>Tags</FormLabel>
+          <FormRow>
+            <FormLabel>{translate('Tags')}</FormLabel>
 
-            <FormInputGroup
+            <FormInput
               type={inputTypes.TAG}
               name="tags"
               value={tags}
               onChange={onTagsChange}
             />
-          </FormGroup>
+          </FormRow>
 
-          <FormGroup>
-            <FormLabel>Apply Tags</FormLabel>
-
-            <FormInputGroup
+          <FormRow>
+            <FormLabel>{translate('ApplyTags')}</FormLabel>
+            <FormInputHelpText
+              text={translate('ApplyTagsHelpTextHowToApplySeries')}
+            />
+            <FormInputHelpText text={translate('ApplyTagsHelpTextAdd')} />
+            <FormInputHelpText text={translate('ApplyTagsHelpTextRemove')} />
+            <FormInputHelpText text={translate('ApplyTagsHelpTextReplace')} />
+            <FormInput
               type={inputTypes.SELECT}
               name="applyTags"
               value={applyTags}
               values={applyTagsOptions}
-              helpTexts={[
-                'How to apply tags to the selected series',
-                'Add: Add the tags the existing list of tags',
-                'Remove: Remove the entered tags',
-                'Replace: Replace the tags with the entered tags (enter no tags to clear all tags)',
-              ]}
               onChange={onApplyTagsChange}
             />
-          </FormGroup>
+          </FormRow>
 
-          <FormGroup>
-            <FormLabel>Result</FormLabel>
+          <FormRow>
+            <FormLabel>{translate('Result')}</FormLabel>
 
             <div className={styles.result}>
               {seriesTags.map((id) => {
@@ -124,7 +132,11 @@ function TagsModalContent(props: TagsModalContentProps) {
                 return (
                   <Label
                     key={tag.id}
-                    title={removeTag ? 'Removing tag' : 'Existing tag'}
+                    title={
+                      removeTag
+                        ? translate('RemovingTag')
+                        : translate('ExistingTag')
+                    }
                     kind={removeTag ? kinds.INVERSE : kinds.INFO}
                     size={sizes.LARGE}
                   >
@@ -148,7 +160,7 @@ function TagsModalContent(props: TagsModalContentProps) {
                   return (
                     <Label
                       key={tag.id}
-                      title={'Adding tag'}
+                      title={translate('AddingTag')}
                       kind={kinds.SUCCESS}
                       size={sizes.LARGE}
                     >
@@ -157,15 +169,14 @@ function TagsModalContent(props: TagsModalContentProps) {
                   );
                 })}
             </div>
-          </FormGroup>
+          </FormRow>
         </Form>
       </ModalBody>
-
       <ModalFooter>
-        <Button onPress={onModalClose}>Cancel</Button>
+        <Button onPress={onModalClose}>{translate('Cancel')}</Button>
 
         <Button kind={kinds.PRIMARY} onPress={onApplyPress}>
-          Apply
+          {translate('Apply')}
         </Button>
       </ModalFooter>
     </ModalContent>

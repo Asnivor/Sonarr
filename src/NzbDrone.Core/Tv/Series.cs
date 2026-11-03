@@ -14,15 +14,22 @@ namespace NzbDrone.Core.Tv
             Images = new List<MediaCover.MediaCover>();
             Genres = new List<string>();
             Actors = new List<Actor>();
+            SeasonTypes = new List<SeasonType>();
+            Translations = new List<SeriesTranslation>();
             Seasons = new List<Season>();
             Tags = new HashSet<int>();
             OriginalLanguage = Language.English;
+            MalIds = new HashSet<int>();
+            AniListIds = new HashSet<int>();
         }
 
         public int TvdbId { get; set; }
         public int TvRageId { get; set; }
         public int TvMazeId { get; set; }
         public string ImdbId { get; set; }
+        public int TmdbId { get; set; }
+        public HashSet<int> MalIds { get; set; }
+        public HashSet<int> AniListIds { get; set; }
         public string Title { get; set; }
         public string CleanTitle { get; set; }
         public string SortTitle { get; set; }
@@ -30,6 +37,7 @@ namespace NzbDrone.Core.Tv
         public string Overview { get; set; }
         public string AirTime { get; set; }
         public bool Monitored { get; set; }
+        public NewItemMonitorTypes MonitorNewItems { get; set; }
         public int QualityProfileId { get; set; }
         public bool SeasonFolder { get; set; }
         public DateTime? LastInfoSync { get; set; }
@@ -40,6 +48,7 @@ namespace NzbDrone.Core.Tv
         public bool UseSceneNumbering { get; set; }
         public string TitleSlug { get; set; }
         public string Path { get; set; }
+        public string PendingPath { get; set; }
         public int Year { get; set; }
         public Ratings Ratings { get; set; }
         public List<string> Genres { get; set; }
@@ -48,9 +57,16 @@ namespace NzbDrone.Core.Tv
         public string RootFolderPath { get; set; }
         public DateTime Added { get; set; }
         public DateTime? FirstAired { get; set; }
+        public DateTime? LastAired { get; set; }
         public LazyLoaded<QualityProfile> QualityProfile { get; set; }
+        public Language Language { get; set; }
         public Language OriginalLanguage { get; set; }
-
+        public string OriginalCountry { get; set; }
+        public string OriginalTitle { get; set; }
+        public string CleanOriginalTitle { get; set; }
+        public string SeasonType { get; set; }
+        public List<SeasonType> SeasonTypes { get; set; }
+        public List<SeriesTranslation> Translations { get; set; }
         public List<Season> Seasons { get; set; }
         public HashSet<int> Tags { get; set; }
         public AddSeriesOptions AddOptions { get; set; }
@@ -70,11 +86,15 @@ namespace NzbDrone.Core.Tv
 
             SeasonFolder = otherSeries.SeasonFolder;
             Monitored = otherSeries.Monitored;
+            MonitorNewItems = otherSeries.MonitorNewItems;
 
             SeriesType = otherSeries.SeriesType;
             RootFolderPath = otherSeries.RootFolderPath;
             Tags = otherSeries.Tags;
             AddOptions = otherSeries.AddOptions;
+
+            Language = otherSeries.Language;
+            SeasonType = otherSeries.SeasonType;
         }
     }
 }

@@ -1,33 +1,50 @@
 import React, { useCallback } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
 import Form from 'Components/Form/Form';
-import FormGroup from 'Components/Form/FormGroup';
-import FormInputGroup from 'Components/Form/FormInputGroup';
+import FormInput from 'Components/Form/FormInput';
+import FormInputHelpText from 'Components/Form/FormInputHelpText';
 import FormLabel from 'Components/Form/FormLabel';
+import FormRow from 'Components/Form/FormRow';
+import { EnhancedSelectInputValue } from 'Components/Form/Select/EnhancedSelectInput';
 import Button from 'Components/Link/Button';
 import ModalBody from 'Components/Modal/ModalBody';
 import ModalContent from 'Components/Modal/ModalContent';
 import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
 import { inputTypes } from 'Helpers/Props';
-import { setSeriesOverviewOption } from 'Store/Actions/seriesIndexActions';
-import selectOverviewOptions from '../selectOverviewOptions';
+import {
+  setSeriesOverviewOptions,
+  useSeriesOverviewOptions,
+} from 'Series/seriesOptionsStore';
+import translate from 'Utilities/String/translate';
 
-const posterSizeOptions = [
-  { key: 'small', value: 'Small' },
-  { key: 'medium', value: 'Medium' },
-  { key: 'large', value: 'Large' },
+const posterSizeOptions: EnhancedSelectInputValue<string>[] = [
+  {
+    key: 'small',
+    get value() {
+      return translate('Small');
+    },
+  },
+  {
+    key: 'medium',
+    get value() {
+      return translate('Medium');
+    },
+  },
+  {
+    key: 'large',
+    get value() {
+      return translate('Large');
+    },
+  },
 ];
 
 interface SeriesIndexOverviewOptionsModalContentProps {
   onModalClose(...args: unknown[]): void;
 }
 
-function SeriesIndexOverviewOptionsModalContent(
-  props: SeriesIndexOverviewOptionsModalContentProps
-) {
-  const { onModalClose } = props;
-
+function SeriesIndexOverviewOptionsModalContent({
+  onModalClose,
+}: SeriesIndexOverviewOptionsModalContentProps) {
   const {
     detailedProgressBar,
     size,
@@ -39,152 +56,160 @@ function SeriesIndexOverviewOptionsModalContent(
     showSeasonCount,
     showPath,
     showSizeOnDisk,
+    showTags,
     showSearchAction,
-  } = useSelector(selectOverviewOptions);
-
-  const dispatch = useDispatch();
+  } = useSeriesOverviewOptions();
 
   const onOverviewOptionChange = useCallback(
     ({ name, value }: { name: string; value: unknown }) => {
-      dispatch(setSeriesOverviewOption({ [name]: value }));
+      setSeriesOverviewOptions({ [name]: value });
     },
-    [dispatch]
+    []
   );
 
   return (
     <ModalContent onModalClose={onModalClose}>
-      <ModalHeader>Overview Options</ModalHeader>
-
+      <ModalHeader>{translate('OverviewOptions')}</ModalHeader>
       <ModalBody>
         <Form>
-          <FormGroup>
-            <FormLabel>Poster Size</FormLabel>
+          <FormRow>
+            <FormLabel>{translate('PosterSize')}</FormLabel>
 
-            <FormInputGroup
+            <FormInput
               type={inputTypes.SELECT}
               name="size"
               value={size}
               values={posterSizeOptions}
               onChange={onOverviewOptionChange}
             />
-          </FormGroup>
+          </FormRow>
 
-          <FormGroup>
-            <FormLabel>Detailed Progress Bar</FormLabel>
-
-            <FormInputGroup
+          <FormRow>
+            <FormLabel>{translate('DetailedProgressBar')}</FormLabel>
+            <FormInputHelpText
+              text={translate('DetailedProgressBarHelpText')}
+            />
+            <FormInput
               type={inputTypes.CHECK}
               name="detailedProgressBar"
               value={detailedProgressBar}
-              helpText="Show text on progress bar"
               onChange={onOverviewOptionChange}
             />
-          </FormGroup>
+          </FormRow>
 
-          <FormGroup>
-            <FormLabel>Show Monitored</FormLabel>
-
-            <FormInputGroup
+          <FormRow>
+            <FormLabel>{translate('ShowMonitored')}</FormLabel>
+            <FormInputHelpText text={translate('ShowMonitoredHelpText')} />
+            <FormInput
               type={inputTypes.CHECK}
               name="showMonitored"
               value={showMonitored}
               onChange={onOverviewOptionChange}
             />
-          </FormGroup>
+          </FormRow>
 
-          <FormGroup>
-            <FormLabel>Show Network</FormLabel>
-
-            <FormInputGroup
+          <FormRow>
+            <FormLabel>{translate('ShowNetwork')}</FormLabel>
+            <FormInputHelpText text={translate('ShowNetworkHelpText')} />
+            <FormInput
               type={inputTypes.CHECK}
               name="showNetwork"
               value={showNetwork}
               onChange={onOverviewOptionChange}
             />
-          </FormGroup>
+          </FormRow>
 
-          <FormGroup>
-            <FormLabel>Show Quality Profile</FormLabel>
-
-            <FormInputGroup
+          <FormRow>
+            <FormLabel>{translate('ShowQualityProfile')}</FormLabel>
+            <FormInputHelpText text={translate('ShowQualityProfileHelpText')} />
+            <FormInput
               type={inputTypes.CHECK}
               name="showQualityProfile"
               value={showQualityProfile}
               onChange={onOverviewOptionChange}
             />
-          </FormGroup>
+          </FormRow>
 
-          <FormGroup>
-            <FormLabel>Show Previous Airing</FormLabel>
-
-            <FormInputGroup
+          <FormRow>
+            <FormLabel>{translate('ShowPreviousAiring')}</FormLabel>
+            <FormInputHelpText text={translate('ShowPreviousAiringHelpText')} />
+            <FormInput
               type={inputTypes.CHECK}
               name="showPreviousAiring"
               value={showPreviousAiring}
               onChange={onOverviewOptionChange}
             />
-          </FormGroup>
+          </FormRow>
 
-          <FormGroup>
-            <FormLabel>Show Date Added</FormLabel>
-
-            <FormInputGroup
+          <FormRow>
+            <FormLabel>{translate('ShowDateAdded')}</FormLabel>
+            <FormInputHelpText text={translate('ShowDateAddedHelpText')} />
+            <FormInput
               type={inputTypes.CHECK}
               name="showAdded"
               value={showAdded}
               onChange={onOverviewOptionChange}
             />
-          </FormGroup>
+          </FormRow>
 
-          <FormGroup>
-            <FormLabel>Show Season Count</FormLabel>
-
-            <FormInputGroup
+          <FormRow>
+            <FormLabel>{translate('ShowSeasonCount')}</FormLabel>
+            <FormInputHelpText text={translate('ShowSeasonCountHelpText')} />
+            <FormInput
               type={inputTypes.CHECK}
               name="showSeasonCount"
               value={showSeasonCount}
               onChange={onOverviewOptionChange}
             />
-          </FormGroup>
+          </FormRow>
 
-          <FormGroup>
-            <FormLabel>Show Path</FormLabel>
-
-            <FormInputGroup
+          <FormRow>
+            <FormLabel>{translate('ShowPath')}</FormLabel>
+            <FormInputHelpText text={translate('ShowPathHelpText')} />
+            <FormInput
               type={inputTypes.CHECK}
               name="showPath"
               value={showPath}
               onChange={onOverviewOptionChange}
             />
-          </FormGroup>
+          </FormRow>
 
-          <FormGroup>
-            <FormLabel>Show Size on Disk</FormLabel>
-
-            <FormInputGroup
+          <FormRow>
+            <FormLabel>{translate('ShowSizeOnDisk')}</FormLabel>
+            <FormInputHelpText text={translate('ShowSizeOnDiskHelpText')} />
+            <FormInput
               type={inputTypes.CHECK}
               name="showSizeOnDisk"
               value={showSizeOnDisk}
               onChange={onOverviewOptionChange}
             />
-          </FormGroup>
+          </FormRow>
 
-          <FormGroup>
-            <FormLabel>Show Search</FormLabel>
+          <FormRow>
+            <FormLabel>{translate('ShowTags')}</FormLabel>
+            <FormInputHelpText text={translate('ShowTagsHelpText')} />
+            <FormInput
+              type={inputTypes.CHECK}
+              name="showTags"
+              value={showTags}
+              onChange={onOverviewOptionChange}
+            />
+          </FormRow>
 
-            <FormInputGroup
+          <FormRow>
+            <FormLabel>{translate('ShowSearch')}</FormLabel>
+            <FormInputHelpText text={translate('ShowSearchHelpText')} />
+            <FormInput
               type={inputTypes.CHECK}
               name="showSearchAction"
               value={showSearchAction}
-              helpText="Show search button on hover"
               onChange={onOverviewOptionChange}
             />
-          </FormGroup>
+          </FormRow>
         </Form>
       </ModalBody>
-
       <ModalFooter>
-        <Button onPress={onModalClose}>Close</Button>
+        <Button onPress={onModalClose}>{translate('Close')}</Button>
       </ModalFooter>
     </ModalContent>
   );

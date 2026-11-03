@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import StackTrace from 'stacktrace-js';
-import styles from './ErrorBoundaryError.css';
+import translate from 'Utilities/String/translate';
+import styles from './ErrorBoundaryError.module.css';
 
-interface ErrorBoundaryErrorProps {
+export interface ErrorBoundaryErrorProps {
   className: string;
   messageClassName: string;
   detailsClassName: string;
@@ -18,7 +19,7 @@ function ErrorBoundaryError(props: ErrorBoundaryErrorProps) {
     className = styles.container,
     messageClassName = styles.message,
     detailsClassName = styles.details,
-    message = 'There was an error loading this content',
+    message = translate('ErrorLoadingContent'),
     error,
     info,
   } = props;
@@ -63,7 +64,7 @@ function ErrorBoundaryError(props: ErrorBoundaryErrorProps) {
           <div>{info.componentStack}</div>
         )}
 
-        {<div className={styles.version}>Version: {window.Sonarr.version}</div>}
+        <div className={styles.version}>Version: {window.Sonarr.version}</div>
       </details>
     </div>
   );

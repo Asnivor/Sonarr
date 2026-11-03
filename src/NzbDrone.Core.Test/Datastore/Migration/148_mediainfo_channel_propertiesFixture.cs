@@ -11,12 +11,11 @@ namespace NzbDrone.Core.Test.Datastore.Migration
     [TestFixture]
     public class mediainfo_channel_propertiesFixture : MigrationTest<mediainfo_channels>
     {
-        private void AddEpisodeFile(mediainfo_channels m, int id)
+        private void AddEpisodeFile(mediainfo_channels m, int seriesId)
         {
             var episode = new
             {
-                Id = id,
-                SeriesId = id,
+                SeriesId = seriesId,
                 Quality = new { }.ToJson(),
                 Size = 0,
                 DateAdded = DateTime.UtcNow,
@@ -67,7 +66,7 @@ namespace NzbDrone.Core.Test.Datastore.Migration
                 AddEpisodeFile(c, 1);
             });
 
-            var items = db.Query<EpisodeFile148>("SELECT MediaInfo FROM EpisodeFiles");
+            var items = db.Query<EpisodeFile148>("SELECT \"MediaInfo\" FROM \"EpisodeFiles\"");
 
             items.Should().HaveCount(1);
 

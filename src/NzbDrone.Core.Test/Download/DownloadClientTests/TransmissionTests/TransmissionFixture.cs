@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
@@ -12,6 +13,14 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.TransmissionTests
     [TestFixture]
     public class TransmissionFixture : TransmissionFixtureBase<Transmission>
     {
+        [SetUp]
+        public void Setup_Transmission()
+        {
+            Mocker.GetMock<ITransmissionProxy>()
+                .Setup(v => v.GetClientVersion(It.IsAny<TransmissionSettings>(), It.IsAny<bool>()))
+                .Returns("4.0.6");
+        }
+
         [Test]
         public void queued_item_should_have_required_properties()
         {
@@ -48,33 +57,36 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.TransmissionTests
         }
 
         [Test]
-        public void magnet_download_should_not_return_the_item()
+        public void magnet_download_should_be_returned_as_queued()
         {
             PrepareClientToReturnMagnetItem();
-            Subject.GetItems().Count().Should().Be(0);
+
+            var item = Subject.GetItems().Single();
+
+            item.Status.Should().Be(DownloadItemStatus.Queued);
         }
 
         [Test]
-        public void Download_should_return_unique_id()
+        public async Task Download_should_return_unique_id()
         {
             GivenSuccessfulDownload();
 
             var remoteEpisode = CreateRemoteEpisode();
 
-            var id = Subject.Download(remoteEpisode, CreateIndexer());
+            var id = await Subject.Download(remoteEpisode, CreateIndexer());
 
             id.Should().NotBeNullOrEmpty();
         }
 
         [Test]
-        public void Download_with_TvDirectory_should_force_directory()
+        public async Task Download_with_TvDirectory_should_force_directory()
         {
             GivenTvDirectory();
             GivenSuccessfulDownload();
 
             var remoteEpisode = CreateRemoteEpisode();
 
-            var id = Subject.Download(remoteEpisode, CreateIndexer());
+            var id = await Subject.Download(remoteEpisode, CreateIndexer());
 
             id.Should().NotBeNullOrEmpty();
 
@@ -83,14 +95,18 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.TransmissionTests
         }
 
         [Test]
-        public void Download_with_category_should_force_directory()
+        public async Task Download_with_category_on_v3_should_force_directory()
         {
+            Mocker.GetMock<ITransmissionProxy>()
+                .Setup(v => v.GetClientVersion(It.IsAny<TransmissionSettings>(), It.IsAny<bool>()))
+                .Returns("3.0.6");
+
             GivenTvCategory();
             GivenSuccessfulDownload();
 
             var remoteEpisode = CreateRemoteEpisode();
 
-            var id = Subject.Download(remoteEpisode, CreateIndexer());
+            var id = await Subject.Download(remoteEpisode, CreateIndexer());
 
             id.Should().NotBeNullOrEmpty();
 
@@ -99,8 +115,66 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.TransmissionTests
         }
 
         [Test]
-        public void Download_with_category_should_not_have_double_slashes()
+        public void should_not_allow_category_and_directory_on_v3()
         {
+            Mocker.GetMock<ITransmissionProxy>()
+                .Setup(v => v.GetClientVersion(It.IsAny<TransmissionSettings>(), It.IsAny<bool>()))
+                .Returns("3.0.6");
+
+            GivenTvCategory();
+            GivenTvDirectory();
+
+            Subject.Test().IsValid.Should().BeFalse();
+        }
+
+        [Test]
+        public void should_allow_category_and_directory_on_v4()
+        {
+            GivenTvCategory();
+            GivenTvDirectory();
+
+            Subject.Test().IsValid.Should().BeTrue();
+        }
+
+        [Test]
+        public async Task Download_with_category_on_v4_should_not_force_directory()
+        {
+            GivenTvCategory();
+            GivenSuccessfulDownload();
+
+            var remoteEpisode = CreateRemoteEpisode();
+
+            var id = await Subject.Download(remoteEpisode, CreateIndexer());
+
+            id.Should().NotBeNullOrEmpty();
+
+            Mocker.GetMock<ITransmissionProxy>()
+                .Verify(v => v.AddTorrentFromData(It.IsAny<byte[]>(), null, It.IsAny<TransmissionSettings>()), Times.Once());
+        }
+
+        [Test]
+        public async Task Download_with_directory_and_category_on_v4_should_use_directory()
+        {
+            GivenTvDirectory();
+            GivenTvCategory();
+            GivenSuccessfulDownload();
+
+            var remoteEpisode = CreateRemoteEpisode();
+
+            var id = await Subject.Download(remoteEpisode, CreateIndexer());
+
+            id.Should().NotBeNullOrEmpty();
+
+            Mocker.GetMock<ITransmissionProxy>()
+                .Verify(v => v.AddTorrentFromData(It.IsAny<byte[]>(), @"C:/Downloads/Finished/sonarr", It.IsAny<TransmissionSettings>()), Times.Once());
+        }
+
+        [Test]
+        public async Task Download_with_category_on_v3_should_not_have_double_slashes()
+        {
+            Mocker.GetMock<ITransmissionProxy>()
+                .Setup(v => v.GetClientVersion(It.IsAny<TransmissionSettings>(), It.IsAny<bool>()))
+                .Returns("3.0.6");
             GivenTvCategory();
             GivenSuccessfulDownload();
 
@@ -108,7 +182,7 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.TransmissionTests
 
             var remoteEpisode = CreateRemoteEpisode();
 
-            var id = Subject.Download(remoteEpisode, CreateIndexer());
+            var id = await Subject.Download(remoteEpisode, CreateIndexer());
 
             id.Should().NotBeNullOrEmpty();
 
@@ -117,13 +191,13 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.TransmissionTests
         }
 
         [Test]
-        public void Download_without_TvDirectory_and_Category_should_use_default()
+        public async Task Download_without_TvDirectory_and_Category_should_use_default()
         {
             GivenSuccessfulDownload();
 
             var remoteEpisode = CreateRemoteEpisode();
 
-            var id = Subject.Download(remoteEpisode, CreateIndexer());
+            var id = await Subject.Download(remoteEpisode, CreateIndexer());
 
             id.Should().NotBeNullOrEmpty();
 
@@ -132,14 +206,14 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.TransmissionTests
         }
 
         [TestCase("magnet:?xt=urn:btih:ZPBPA2P6ROZPKRHK44D5OW6NHXU5Z6KR&tr=udp", "CBC2F069FE8BB2F544EAE707D75BCD3DE9DCF951")]
-        public void Download_should_get_hash_from_magnet_url(string magnetUrl, string expectedHash)
+        public async Task Download_should_get_hash_from_magnet_url(string magnetUrl, string expectedHash)
         {
             GivenSuccessfulDownload();
 
             var remoteEpisode = CreateRemoteEpisode();
             remoteEpisode.Release.DownloadUrl = magnetUrl;
 
-            var id = Subject.Download(remoteEpisode, CreateIndexer());
+            var id = await Subject.Download(remoteEpisode, CreateIndexer());
 
             id.Should().Be(expectedHash);
         }
@@ -268,7 +342,7 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.TransmissionTests
         public void should_only_check_version_number(string version)
         {
             Mocker.GetMock<ITransmissionProxy>()
-                  .Setup(s => s.GetClientVersion(It.IsAny<TransmissionSettings>()))
+                  .Setup(s => s.GetClientVersion(It.IsAny<TransmissionSettings>(), true))
                   .Returns(version);
 
             Subject.Test().IsValid.Should().BeTrue();

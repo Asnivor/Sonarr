@@ -1,12 +1,12 @@
 {
   "compilerOptions": {
-      "target": "es6",
+      "target": "esnext",
       "allowJs": true,
       "checkJs": false,
       "baseUrl": "src",
       "jsx": "react",
-      "module": "commonjs",
-      "moduleResolution": "node",
+      "module": "esnext",
+      "moduleResolution": "bundler",
       "allowSyntheticDefaultImports": true,
       "forceConsistentCasingInFileNames": true,
       "noEmit": true,
@@ -27,8 +27,8 @@
   },
   "include": [
       "./src/**/*",
-      "./.eslintrc.js",
-      "./build/webpack.config.js",
+      "./.eslintrc.cjs",
+      "../vite.config.ts",
       "./typings/*.ts",
   ],
   "exclude": [

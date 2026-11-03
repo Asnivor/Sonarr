@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using NzbDrone.Core.Languages;
 using Sonarr.Http;
@@ -32,9 +33,15 @@ namespace Sonarr.Api.V3.Profiles.Languages
             };
         }
 
+        [NonAction]
+        public override Results<Ok<LanguageProfileResource>, NotFound> GetResourceByIdWithErrorHandler(int id)
+        {
+            return base.GetResourceByIdWithErrorHandler(id);
+        }
+
         protected override LanguageProfileResource GetResourceById(int id)
         {
-            throw new global::System.NotImplementedException();
+            throw new NotImplementedException();
         }
     }
 }

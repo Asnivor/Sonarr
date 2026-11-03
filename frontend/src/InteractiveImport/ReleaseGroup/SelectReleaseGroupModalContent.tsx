@@ -1,15 +1,16 @@
 import React, { useCallback, useState } from 'react';
 import Form from 'Components/Form/Form';
-import FormGroup from 'Components/Form/FormGroup';
-import FormInputGroup from 'Components/Form/FormInputGroup';
+import FormInput from 'Components/Form/FormInput';
 import FormLabel from 'Components/Form/FormLabel';
+import FormRow from 'Components/Form/FormRow';
 import Button from 'Components/Link/Button';
 import ModalBody from 'Components/Modal/ModalBody';
 import ModalContent from 'Components/Modal/ModalContent';
 import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
 import { inputTypes, kinds, scrollDirections } from 'Helpers/Props';
-import styles from './SelectReleaseGroupModalContent.css';
+import translate from 'Utilities/String/translate';
+import styles from './SelectReleaseGroupModalContent.module.css';
 
 interface SelectReleaseGroupModalContentProps {
   releaseGroup: string;
@@ -37,32 +38,33 @@ function SelectReleaseGroupModalContent(
 
   return (
     <ModalContent onModalClose={onModalClose}>
-      <ModalHeader>{modalTitle} - Set Release Group</ModalHeader>
+      <ModalHeader>
+        {translate('SetReleaseGroupModalTitle', { modalTitle })}
+      </ModalHeader>
 
       <ModalBody
         className={styles.modalBody}
         scrollDirection={scrollDirections.NONE}
       >
         <Form>
-          <FormGroup>
-            <FormLabel>Release Group</FormLabel>
-
-            <FormInputGroup
+          <FormRow>
+            <FormLabel>{translate('ReleaseGroup')}</FormLabel>
+            <FormInput
               type={inputTypes.TEXT}
               name="releaseGroup"
               value={releaseGroup}
               autoFocus={true}
               onChange={onReleaseGroupChange}
             />
-          </FormGroup>
+          </FormRow>
         </Form>
       </ModalBody>
 
       <ModalFooter>
-        <Button onPress={onModalClose}>Cancel</Button>
+        <Button onPress={onModalClose}>{translate('Cancel')}</Button>
 
         <Button kind={kinds.SUCCESS} onPress={onReleaseGroupSelectWrapper}>
-          Set Release Group
+          {translate('SetReleaseGroup')}
         </Button>
       </ModalFooter>
     </ModalContent>

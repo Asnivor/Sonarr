@@ -1,6 +1,8 @@
+using System.Collections.Generic;
 using System.Linq;
 using FluentAssertions;
 using NUnit.Framework;
+using NzbDrone.Common.Serializer;
 using NzbDrone.Core.Datastore.Migration;
 using NzbDrone.Core.Test.Framework;
 
@@ -16,15 +18,21 @@ namespace NzbDrone.Core.Test.Datastore.Migration
             {
                 c.Insert.IntoTable("Profiles").Row(new
                 {
-                    Id = 0,
                     Name = "SDTV",
                     Cutoff = 1,
-                    Items = "[ { \"quality\": 1, \"allowed\": true } ]",
+                    Items = new List<object>
+                    {
+                        new
+                        {
+                            Quality = 1,
+                            Allowed = true
+                        }
+                    }.ToJson(),
                     Language = 1
                 });
             });
 
-            var profiles = db.Query<Profile71>("SELECT Items FROM Profiles LIMIT 1");
+            var profiles = db.Query<Profile71>("SELECT \"Items\" FROM \"Profiles\" LIMIT 1");
 
             var items = profiles.First().Items;
             items.Should().HaveCount(2);

@@ -1,8 +1,8 @@
 import { orderBy } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { RENAME_SERIES } from 'Commands/commandNames';
-import Alert from 'Components/Alert';
+import { useSelect } from 'App/Select/SelectContext';
+import CommandNames from 'Commands/CommandNames';
+import { useExecuteCommand } from 'Commands/useCommands';
 import Icon from 'Components/Icon';
 import Button from 'Components/Link/Button';
 import ModalBody from 'Components/Modal/ModalBody';
@@ -11,20 +11,21 @@ import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
 import { icons, kinds } from 'Helpers/Props';
 import Series from 'Series/Series';
-import { executeCommand } from 'Store/Actions/commandActions';
-import createAllSeriesSelector from 'Store/Selectors/createAllSeriesSelector';
-import styles from './OrganizeSeriesModalContent.css';
+import useSeries from 'Series/useSeries';
+import translate from 'Utilities/String/translate';
+import styles from './OrganizeSeriesModalContent.module.css';
 
-interface OrganizeSeriesModalContentProps {
-  seriesIds: number[];
+export interface OrganizeSeriesModalContentProps {
   onModalClose: () => void;
 }
 
-function OrganizeSeriesModalContent(props: OrganizeSeriesModalContentProps) {
-  const { seriesIds, onModalClose } = props;
-
-  const allSeries: Series[] = useSelector(createAllSeriesSelector());
-  const dispatch = useDispatch();
+function OrganizeSeriesModalContent({
+  onModalClose,
+}: OrganizeSeriesModalContentProps) {
+  const { data: allSeries } = useSeries();
+  const executeCommand = useExecuteCommand();
+  const { useSelectedIds } = useSelect<Series>();
+  const seriesIds = useSelectedIds();
 
   const seriesTitles = useMemo(() => {
     const series = seriesIds.reduce((acc: Series[], id) => {
@@ -40,33 +41,33 @@ function OrganizeSeriesModalContent(props: OrganizeSeriesModalContentProps) {
     const sorted = orderBy(series, ['sortTitle']);
 
     return sorted.map((s) => s.title);
-  }, [seriesIds, allSeries]);
+  }, [allSeries, seriesIds]);
 
   const onOrganizePress = useCallback(() => {
-    dispatch(
-      executeCommand({
-        name: RENAME_SERIES,
-        seriesIds,
-      })
-    );
+    executeCommand({
+      name: CommandNames.RenameSeries,
+      seriesIds,
+    });
 
     onModalClose();
-  }, [seriesIds, onModalClose, dispatch]);
+  }, [seriesIds, onModalClose, executeCommand]);
 
   return (
     <ModalContent onModalClose={onModalClose}>
-      <ModalHeader>Organize Selected Series</ModalHeader>
+      <ModalHeader>
+        {translate('OrganizeSelectedSeriesModalHeader')}
+      </ModalHeader>
 
       <ModalBody>
-        <Alert>
-          Tip: To preview a rename, select "Cancel", then select any series
-          title and use the
+        <p className={styles.intro}>
+          {translate('OrganizeSelectedSeriesModalAlert')}
           <Icon className={styles.renameIcon} name={icons.ORGANIZE} />
-        </Alert>
+        </p>
 
         <div className={styles.message}>
-          Are you sure you want to organize all files in the{' '}
-          {seriesTitles.length} selected series?
+          {translate('OrganizeSelectedSeriesModalConfirmation', {
+            count: seriesTitles.length,
+          })}
         </div>
 
         <ul>
@@ -77,10 +78,10 @@ function OrganizeSeriesModalContent(props: OrganizeSeriesModalContentProps) {
       </ModalBody>
 
       <ModalFooter>
-        <Button onPress={onModalClose}>Cancel</Button>
+        <Button onPress={onModalClose}>{translate('Cancel')}</Button>
 
         <Button kind={kinds.DANGER} onPress={onOrganizePress}>
-          Organize
+          {translate('Organize')}
         </Button>
       </ModalFooter>
     </ModalContent>

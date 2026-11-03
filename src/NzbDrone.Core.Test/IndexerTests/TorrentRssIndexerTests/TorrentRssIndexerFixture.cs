@@ -1,5 +1,7 @@
 using System;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
@@ -35,16 +37,20 @@ namespace NzbDrone.Core.Test.IndexerTests.TorrentRssIndexerTests
             var recentFeed = ReadAllText(@"Files/Indexers/" + rssXmlFile);
 
             Mocker.GetMock<IHttpClient>()
+                .Setup(o => o.ExecuteAsync(It.IsAny<HttpRequest>()))
+                .ReturnsAsync((HttpRequest r, CancellationToken _) => new HttpResponse(r, new HttpHeader(), recentFeed));
+
+            Mocker.GetMock<IHttpClient>()
                 .Setup(o => o.Execute(It.IsAny<HttpRequest>()))
                 .Returns<HttpRequest>(r => new HttpResponse(r, new HttpHeader(), recentFeed));
         }
 
         [Test]
-        public void should_parse_recent_feed_from_ImmortalSeed()
+        public async Task should_parse_recent_feed_from_ImmortalSeed()
         {
             GivenRecentFeedResponse("TorrentRss/ImmortalSeed.xml");
 
-            var releases = Subject.FetchRecent();
+            var releases = await Subject.FetchRecent();
 
             releases.Should().HaveCount(50);
             releases.First().Should().BeOfType<TorrentInfo>();
@@ -66,11 +72,11 @@ namespace NzbDrone.Core.Test.IndexerTests.TorrentRssIndexerTests
         }
 
         [Test]
-        public void should_parse_recent_feed_from_Ezrss()
+        public async Task should_parse_recent_feed_from_Ezrss()
         {
             GivenRecentFeedResponse("TorrentRss/Ezrss.xml");
 
-            var releases = Subject.FetchRecent();
+            var releases = await Subject.FetchRecent();
 
             releases.Should().HaveCount(3);
             releases.First().Should().BeOfType<TorrentInfo>();
@@ -92,13 +98,13 @@ namespace NzbDrone.Core.Test.IndexerTests.TorrentRssIndexerTests
         }
 
         [Test]
-        public void should_parse_recent_feed_from_ShowRSS_info()
+        public async Task should_parse_recent_feed_from_ShowRSS_info()
         {
             Subject.Definition.Settings.As<TorrentRssIndexerSettings>().AllowZeroSize = true;
 
             GivenRecentFeedResponse("TorrentRss/ShowRSS.info.xml");
 
-            var releases = Subject.FetchRecent();
+            var releases = await Subject.FetchRecent();
 
             releases.Should().HaveCount(5);
             releases.First().Should().BeOfType<TorrentInfo>();
@@ -120,13 +126,13 @@ namespace NzbDrone.Core.Test.IndexerTests.TorrentRssIndexerTests
         }
 
         [Test]
-        public void should_parse_recent_feed_from_Doki()
+        public async Task should_parse_recent_feed_from_Doki()
         {
             Subject.Definition.Settings.As<TorrentRssIndexerSettings>().AllowZeroSize = true;
 
             GivenRecentFeedResponse("TorrentRss/Doki.xml");
 
-            var releases = Subject.FetchRecent();
+            var releases = await Subject.FetchRecent();
 
             releases.Should().HaveCount(5);
             releases.First().Should().BeOfType<TorrentInfo>();
@@ -148,11 +154,11 @@ namespace NzbDrone.Core.Test.IndexerTests.TorrentRssIndexerTests
         }
 
         [Test]
-        public void should_parse_recent_feed_from_ExtraTorrents()
+        public async Task should_parse_recent_feed_from_ExtraTorrents()
         {
             GivenRecentFeedResponse("TorrentRss/ExtraTorrents.xml");
 
-            var releases = Subject.FetchRecent();
+            var releases = await Subject.FetchRecent();
 
             releases.Should().HaveCount(5);
             releases.First().Should().BeOfType<TorrentInfo>();
@@ -174,11 +180,11 @@ namespace NzbDrone.Core.Test.IndexerTests.TorrentRssIndexerTests
         }
 
         [Test]
-        public void should_parse_recent_feed_from_LimeTorrents()
+        public async Task should_parse_recent_feed_from_LimeTorrents()
         {
             GivenRecentFeedResponse("TorrentRss/LimeTorrents.xml");
 
-            var releases = Subject.FetchRecent();
+            var releases = await Subject.FetchRecent();
 
             releases.Should().HaveCount(5);
             releases.First().Should().BeOfType<TorrentInfo>();
@@ -200,11 +206,11 @@ namespace NzbDrone.Core.Test.IndexerTests.TorrentRssIndexerTests
         }
 
         [Test]
-        public void should_parse_recent_feed_from_AnimeTosho_without_size()
+        public async Task should_parse_recent_feed_from_AnimeTosho_without_size()
         {
             GivenRecentFeedResponse("TorrentRss/AnimeTosho_NoSize.xml");
 
-            var releases = Subject.FetchRecent();
+            var releases = await Subject.FetchRecent();
 
             releases.Should().HaveCount(2);
             releases.First().Should().BeOfType<TorrentInfo>();
@@ -226,11 +232,11 @@ namespace NzbDrone.Core.Test.IndexerTests.TorrentRssIndexerTests
         }
 
         [Test]
-        public void should_parse_multi_enclosure_from_AnimeTosho()
+        public async Task should_parse_multi_enclosure_from_AnimeTosho()
         {
             GivenRecentFeedResponse("TorrentRss/AnimeTosho_NoSize.xml");
 
-            var releases = Subject.FetchRecent();
+            var releases = await Subject.FetchRecent();
 
             releases.Should().HaveCount(2);
             releases.Last().Should().BeOfType<TorrentInfo>();
@@ -243,11 +249,11 @@ namespace NzbDrone.Core.Test.IndexerTests.TorrentRssIndexerTests
         }
 
         [Test]
-        public void should_parse_recent_feed_from_AlphaRatio()
+        public async Task should_parse_recent_feed_from_AlphaRatio()
         {
             GivenRecentFeedResponse("TorrentRss/AlphaRatio.xml");
 
-            var releases = Subject.FetchRecent();
+            var releases = await Subject.FetchRecent();
 
             releases.Should().HaveCount(2);
             releases.Last().Should().BeOfType<TorrentInfo>();
@@ -260,12 +266,12 @@ namespace NzbDrone.Core.Test.IndexerTests.TorrentRssIndexerTests
         }
 
         [Test]
-        public void should_parse_recent_feed_from_EveolutionWorld_without_size()
+        public async Task should_parse_recent_feed_from_EveolutionWorld_without_size()
         {
             Subject.Definition.Settings.As<TorrentRssIndexerSettings>().AllowZeroSize = true;
             GivenRecentFeedResponse("TorrentRss/EvolutionWorld.xml");
 
-            var releases = Subject.FetchRecent();
+            var releases = await Subject.FetchRecent();
 
             releases.Should().HaveCount(2);
             releases.First().Should().BeOfType<TorrentInfo>();
@@ -287,11 +293,13 @@ namespace NzbDrone.Core.Test.IndexerTests.TorrentRssIndexerTests
         }
 
         [Test]
-        public void should_record_indexer_failure_if_unsupported_feed()
+        public async Task should_record_indexer_failure_if_unsupported_feed()
         {
             GivenRecentFeedResponse("TorrentRss/invalid/TorrentDay_NoPubDate.xml");
 
-            Subject.FetchRecent().Should().BeEmpty();
+            var releases = await Subject.FetchRecent();
+
+            releases.Should().BeEmpty();
 
             Mocker.GetMock<IIndexerStatusService>()
                   .Verify(v => v.RecordFailure(It.IsAny<int>(), TimeSpan.Zero), Times.Once());

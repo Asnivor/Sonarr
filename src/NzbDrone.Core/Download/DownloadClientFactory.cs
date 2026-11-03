@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using FluentValidation.Results;
 using NLog;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.ThingiProvider;
 
@@ -11,6 +12,7 @@ namespace NzbDrone.Core.Download
     public interface IDownloadClientFactory : IProviderFactory<IDownloadClient, DownloadClientDefinition>
     {
         List<IDownloadClient> DownloadHandlingEnabled(bool filterBlockedClients = true);
+        DownloadClientDefinition ResolveDownloadClient(int? id, string name);
     }
 
     public class DownloadClientFactory : ProviderFactory<IDownloadClient, DownloadClientDefinition>, IDownloadClientFactory
@@ -54,14 +56,49 @@ namespace NzbDrone.Core.Download
             return enabledClients.ToList();
         }
 
+        public DownloadClientDefinition ResolveDownloadClient(int? id, string name)
+        {
+            var all = All();
+            var clientByName = name.IsNullOrWhiteSpace() ? null : all.FirstOrDefault(c => c.Name.EqualsIgnoreCase(name));
+            var clientById = id is > 0 ? all.FirstOrDefault(c => c.Id == id.Value) : null;
+
+            if (id is > 0 && clientById == null)
+            {
+                throw new ResolveDownloadClientException("Download client with ID '{0}' could not be found", id.Value);
+            }
+
+            if (name.IsNotNullOrWhiteSpace() && clientByName == null)
+            {
+                throw new ResolveDownloadClientException("Download client with name '{0}' could not be found", name);
+            }
+
+            if (clientByName == null && clientById == null)
+            {
+                return null;
+            }
+
+            if (clientByName != null && clientById != null && clientByName.Id != clientById.Id)
+            {
+                throw new ResolveDownloadClientException("Download client with name '{0}' does not match download client with ID '{1}'", name, id.Value);
+            }
+
+            var client = clientById ?? clientByName;
+
+            if (!client.Enable)
+            {
+                throw new ResolveDownloadClientException("Download client '{0}' ({1}) is not enabled", client.Name, id);
+            }
+
+            return client;
+        }
+
         private IEnumerable<IDownloadClient> FilterBlockedClients(IEnumerable<IDownloadClient> clients)
         {
-            var blockedIndexers = _downloadClientStatusService.GetBlockedProviders().ToDictionary(v => v.ProviderId, v => v);
+            var blockedClients = _downloadClientStatusService.GetBlockedProviders().ToDictionary(v => v.ProviderId, v => v);
 
             foreach (var client in clients)
             {
-                DownloadClientStatus downloadClientStatus;
-                if (blockedIndexers.TryGetValue(client.Definition.Id, out downloadClientStatus))
+                if (blockedClients.TryGetValue(client.Definition.Id, out var downloadClientStatus))
                 {
                     _logger.Debug("Temporarily ignoring download client {0} till {1} due to recent failures.", client.Definition.Name, downloadClientStatus.DisabledTill.Value.ToLocalTime());
                     continue;
@@ -75,9 +112,18 @@ namespace NzbDrone.Core.Download
         {
             var result = base.Test(definition);
 
-            if ((result == null || result.IsValid) && definition.Id != 0)
+            if (definition.Id == 0)
+            {
+                return result;
+            }
+
+            if (result == null || result.IsValid)
             {
                 _downloadClientStatusService.RecordSuccess(definition.Id);
+            }
+            else
+            {
+                _downloadClientStatusService.RecordFailure(definition.Id);
             }
 
             return result;

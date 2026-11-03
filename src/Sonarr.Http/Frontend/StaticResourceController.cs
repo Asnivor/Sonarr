@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
@@ -15,6 +17,7 @@ namespace Sonarr.Http.Frontend
     {
         private readonly IEnumerable<IMapHttpRequestsToDisk> _requestMappers;
         private readonly Logger _logger;
+        private static readonly Regex InvalidPathRegex = new(@"([\/\\]|%2f|%5c)\.\.|\.\.([\/\\]|%2f|%5c)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         public StaticResourceController(IEnumerable<IMapHttpRequestsToDisk> requestMappers,
             Logger logger)
@@ -25,35 +28,47 @@ namespace Sonarr.Http.Frontend
 
         [AllowAnonymous]
         [HttpGet("login")]
-        public IActionResult LoginPage()
+        public async Task<IActionResult> LoginPage()
         {
-            return MapResource("login");
+            return await MapResource("login");
+        }
+
+        [AllowAnonymous]
+        [HttpGet("loggedout")]
+        public async Task<IActionResult> LogoutPage()
+        {
+            return await MapResource("logout");
         }
 
         [EnableCors("AllowGet")]
         [AllowAnonymous]
         [HttpGet("/content/{**path:regex(^(?!api/).*)}")]
-        public IActionResult IndexContent([FromRoute] string path)
+        public async Task<IActionResult> IndexContent([FromRoute] string path)
         {
-            return MapResource("Content/" + path);
+            return await MapResource("Content/" + path);
         }
 
         [HttpGet("")]
         [HttpGet("/{**path:regex(^(?!(api|feed)/).*)}")]
-        public IActionResult Index([FromRoute] string path)
+        public async Task<IActionResult> Index([FromRoute] string path)
         {
-            return MapResource(path);
+            return await MapResource(path);
         }
 
-        private IActionResult MapResource(string path)
+        private async Task<IActionResult> MapResource(string path)
         {
             path = "/" + (path ?? "");
+
+            if (InvalidPathRegex.IsMatch(path))
+            {
+                return NotFound();
+            }
 
             var mapper = _requestMappers.SingleOrDefault(m => m.CanHandle(path));
 
             if (mapper != null)
             {
-                var result = mapper.GetResponse(path);
+                var result = await mapper.GetResponse(Request.HttpContext, path);
 
                 if (result != null)
                 {

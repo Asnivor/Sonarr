@@ -1,6 +1,7 @@
 using System;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Core.Authentication;
+using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Update;
 
 namespace Sonarr.Api.V3.System
@@ -24,6 +25,7 @@ namespace Sonarr.Api.V3.System
         public bool IsOsx { get; set; }
         public bool IsWindows { get; set; }
         public bool IsDocker { get; set; }
+        public bool IsContainerized { get; set; }
         public RuntimeMode Mode { get; set; }
         public string Branch { get; set; }
         public AuthenticationType Authentication { get; set; }
@@ -37,5 +39,7 @@ namespace Sonarr.Api.V3.System
         public string PackageAuthor { get; set; }
         public UpdateMechanism PackageUpdateMechanism { get; set; }
         public string PackageUpdateMechanismMessage { get; set; }
+        public Version DatabaseVersion { get; set; }
+        public DatabaseType DatabaseType { get; set; }
     }
 }

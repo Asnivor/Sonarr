@@ -176,6 +176,19 @@ namespace NzbDrone.Common.Test.DiskTests
         }
 
         [Test]
+        public void should_log_warn_and_fallback_to_copy_if_hardlink_failed()
+        {
+            WithFailedHardlink();
+
+            Subject.TransferFile(_sourcePath, _targetPath, TransferMode.HardLinkOrCopy);
+
+            Mocker.GetMock<IDiskProvider>()
+                .Verify(v => v.CopyFile(_sourcePath, _targetPath, false), Times.Once());
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
         public void should_use_copy_delete_on_cifs()
         {
             _sourceMount.DriveFormat = "ext4";
@@ -349,6 +362,26 @@ namespace NzbDrone.Common.Test.DiskTests
 
             Mocker.GetMock<IDiskProvider>()
                 .Verify(v => v.DeleteFile(_targetPath), Times.Once());
+        }
+
+        [Test]
+        public void should_not_rollback_move_on_partial_if_destination_already_exists()
+        {
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(v => v.MoveFile(_sourcePath, _targetPath, false))
+                .Callback(() =>
+                {
+                    WithExistingFile(_targetPath, true, 900);
+                });
+
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(v => v.MoveFile(_sourcePath, _targetPath, false))
+                .Throws(new FileAlreadyExistsException("File already exists", _targetPath));
+
+            Assert.Throws<FileAlreadyExistsException>(() => Subject.TransferFile(_sourcePath, _targetPath, TransferMode.Move));
+
+            Mocker.GetMock<IDiskProvider>()
+                .Verify(v => v.DeleteFile(_targetPath), Times.Never());
         }
 
         [Test]
@@ -557,6 +590,21 @@ namespace NzbDrone.Common.Test.DiskTests
 
             Directory.Exists(source.FullName).Should().Be(false);
             Directory.Exists(destination.FullName).Should().Be(true);
+        }
+
+        [Test]
+        public void TransferFile_should_find_files_with_multiple_slashes_within_their_path()
+        {
+            WithRealDiskProvider();
+
+            var root = GetFilledTempFolder();
+            var rootDir = root.FullName;
+            var from = Path.Combine(rootDir, "source-file");
+            var toRootDir = rootDir.Replace(Path.DirectorySeparatorChar.ToString(), new string(Path.DirectorySeparatorChar, 3));
+            var to = Path.Combine(toRootDir, "destination-file");
+            File.WriteAllText(from, "Source file");
+            var mode = Subject.TransferFile(from, to, TransferMode.Copy);
+            mode.Should().Be(TransferMode.Copy);
         }
 
         [Test]
@@ -946,7 +994,7 @@ namespace NzbDrone.Common.Test.DiskTests
             var sourceFiles = Directory.GetFileSystemEntries(source, "*", SearchOption.AllDirectories).Select(v => v.Substring(source.Length + 1)).ToArray();
             var destFiles = Directory.GetFileSystemEntries(destination, "*", SearchOption.AllDirectories).Select(v => v.Substring(destination.Length + 1)).ToArray();
 
-            CollectionAssert.AreEquivalent(sourceFiles, destFiles);
+            Assert.That(sourceFiles, Is.EquivalentTo(destFiles));
         }
 
         private void VerifyMoveFolder(string source, string from, string destination)
@@ -956,7 +1004,7 @@ namespace NzbDrone.Common.Test.DiskTests
             var sourceFiles = Directory.GetFileSystemEntries(source, "*", SearchOption.AllDirectories).Select(v => v.Substring(source.Length + 1)).ToArray();
             var destFiles = Directory.GetFileSystemEntries(destination, "*", SearchOption.AllDirectories).Select(v => v.Substring(destination.Length + 1)).ToArray();
 
-            CollectionAssert.AreEquivalent(sourceFiles, destFiles);
+            Assert.That(sourceFiles, Is.EquivalentTo(destFiles));
         }
 
         private void VerifyDeletedFile(string filePath)

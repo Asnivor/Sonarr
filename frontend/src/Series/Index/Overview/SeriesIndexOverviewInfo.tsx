@@ -1,30 +1,16 @@
-import { IconDefinition } from '@fortawesome/free-regular-svg-icons';
-import React, { useMemo } from 'react';
-import { useSelector } from 'react-redux';
-import { icons } from 'Helpers/Props';
-import createUISettingsSelector from 'Store/Selectors/createUISettingsSelector';
-import dimensions from 'Styles/Variables/dimensions';
-import { UiSettings } from 'typings/UiSettings';
+import classNames from 'classnames';
+import React, { forwardRef, ReactNode } from 'react';
+import { QualityProfileModel } from 'Settings/Profiles/Quality/useQualityProfiles';
+import { useUiSettingsValues } from 'Settings/UI/useUiSettings';
+import { useTagList } from 'Tags/useTags';
+import sortByProp from 'Utilities/Array/sortByProp';
 import formatDateTime from 'Utilities/Date/formatDateTime';
 import getRelativeDate from 'Utilities/Date/getRelativeDate';
 import formatBytes from 'Utilities/Number/formatBytes';
-import SeriesIndexOverviewInfoRow from './SeriesIndexOverviewInfoRow';
-import styles from './SeriesIndexOverviewInfo.css';
-
-interface RowProps {
-  name: string;
-  showProp: string;
-  valueProp: string;
-}
-
-interface RowInfoProps {
-  title: string;
-  iconName: IconDefinition;
-  label: string;
-}
+import translate from 'Utilities/String/translate';
+import styles from './SeriesIndexOverviewInfo.module.css';
 
 interface SeriesIndexOverviewInfoProps {
-  height: number;
   showNetwork: boolean;
   showMonitored: boolean;
   showQualityProfile: boolean;
@@ -33,237 +19,195 @@ interface SeriesIndexOverviewInfoProps {
   showSeasonCount: boolean;
   showPath: boolean;
   showSizeOnDisk: boolean;
+  showTags: boolean;
   monitored: boolean;
   nextAiring?: string;
   network?: string;
-  qualityProfile: object;
+  qualityProfile?: QualityProfileModel;
   previousAiring?: string;
   added?: string;
   seasonCount: number;
   path: string;
   sizeOnDisk?: number;
+  tags: number[];
   sortKey: string;
 }
 
-const infoRowHeight = parseInt(dimensions.seriesIndexOverviewInfoRowHeight);
+const SeriesIndexOverviewInfo = forwardRef<
+  HTMLDivElement,
+  SeriesIndexOverviewInfoProps
+>((props, ref) => {
+  const {
+    showNetwork,
+    showMonitored,
+    showQualityProfile,
+    showPreviousAiring,
+    showAdded,
+    showSeasonCount,
+    showPath,
+    showSizeOnDisk,
+    showTags,
+    monitored,
+    nextAiring,
+    network,
+    qualityProfile,
+    previousAiring,
+    added,
+    seasonCount,
+    path,
+    sizeOnDisk = 0,
+    tags,
+    sortKey,
+  } = props;
 
-const rows = [
-  {
-    name: 'monitored',
-    showProp: 'showMonitored',
-    valueProp: 'monitored',
-  },
-  {
-    name: 'network',
-    showProp: 'showNetwork',
-    valueProp: 'network',
-  },
-  {
-    name: 'qualityProfileId',
-    showProp: 'showQualityProfile',
-    valueProp: 'qualityProfileId',
-  },
-  {
-    name: 'previousAiring',
-    showProp: 'showPreviousAiring',
-    valueProp: 'previousAiring',
-  },
-  {
-    name: 'added',
-    showProp: 'showAdded',
-    valueProp: 'added',
-  },
-  {
-    name: 'seasonCount',
-    showProp: 'showSeasonCount',
-    valueProp: 'seasonCount',
-  },
-  {
-    name: 'path',
-    showProp: 'showPath',
-    valueProp: 'path',
-  },
-  {
-    name: 'sizeOnDisk',
-    showProp: 'showSizeOnDisk',
-    valueProp: 'sizeOnDisk',
-  },
-];
-
-function getInfoRowProps(
-  row: RowProps,
-  props: SeriesIndexOverviewInfoProps,
-  uiSettings: UiSettings
-): RowInfoProps | null {
-  const { name } = row;
-
-  if (name === 'monitored') {
-    const monitoredText = props.monitored ? 'Monitored' : 'Unmonitored';
-
-    return {
-      title: monitoredText,
-      iconName: props.monitored ? icons.MONITORED : icons.UNMONITORED,
-      label: monitoredText,
-    };
-  }
-
-  if (name === 'network') {
-    return {
-      title: 'Network',
-      iconName: icons.NETWORK,
-      label: props.network ?? '',
-    };
-  }
-
-  if (name === 'qualityProfileId') {
-    return {
-      title: 'Quality Profile',
-      iconName: icons.PROFILE,
-      // TODO: Type QualityProfile
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore ts(2339)
-      label: props.qualityProfile.name,
-    };
-  }
-
-  if (name === 'previousAiring') {
-    const previousAiring = props.previousAiring;
-    const { showRelativeDates, shortDateFormat, longDateFormat, timeFormat } =
-      uiSettings;
-
-    return {
-      title: `Previous Airing: ${formatDateTime(
-        previousAiring,
-        longDateFormat,
-        timeFormat
-      )}`,
-      iconName: icons.CALENDAR,
-      label:
-        getRelativeDate(previousAiring, shortDateFormat, showRelativeDates, {
-          timeFormat,
-          timeForToday: true,
-        }) ?? '',
-    };
-  }
-
-  if (name === 'added') {
-    const added = props.added;
-    const { showRelativeDates, shortDateFormat, longDateFormat, timeFormat } =
-      uiSettings;
-
-    return {
-      title: `Added: ${formatDateTime(added, longDateFormat, timeFormat)}`,
-      iconName: icons.ADD,
-      label:
-        getRelativeDate(added, shortDateFormat, showRelativeDates, {
-          timeFormat,
-          timeForToday: true,
-        }) ?? '',
-    };
-  }
-
-  if (name === 'seasonCount') {
-    const { seasonCount } = props;
-    let seasons = '1 season';
-
-    if (seasonCount === 0) {
-      seasons = 'No seasons';
-    } else if (seasonCount > 1) {
-      seasons = `${seasonCount} seasons`;
-    }
-
-    return {
-      title: 'Season Count',
-      iconName: icons.CIRCLE,
-      label: seasons,
-    };
-  }
-
-  if (name === 'path') {
-    return {
-      title: 'Path',
-      iconName: icons.FOLDER,
-      label: props.path,
-    };
-  }
-
-  if (name === 'sizeOnDisk') {
-    return {
-      title: 'Size on Disk',
-      iconName: icons.DRIVE,
-      label: formatBytes(props.sizeOnDisk),
-    };
-  }
-
-  return null;
-}
-
-function SeriesIndexOverviewInfo(props: SeriesIndexOverviewInfoProps) {
-  const { height, nextAiring } = props;
-
-  const uiSettings = useSelector(createUISettingsSelector());
-
+  const uiSettings = useUiSettingsValues();
   const { shortDateFormat, showRelativeDates, longDateFormat, timeFormat } =
     uiSettings;
+  const tagList = useTagList();
 
-  let shownRows = 1;
-  const maxRows = Math.floor(height / (infoRowHeight + 4));
+  const chips: ReactNode[] = [];
 
-  const rowInfo = useMemo(() => {
-    return rows.map((row) => {
-      const { name, showProp, valueProp } = row;
+  if (nextAiring) {
+    chips.push(
+      <span
+        key="nextAiring"
+        className={classNames(styles.chip, styles.chipAiring)}
+        title={formatDateTime(nextAiring, longDateFormat, timeFormat)}
+      >
+        {getRelativeDate({
+          date: nextAiring,
+          shortDateFormat,
+          showRelativeDates,
+          timeFormat,
+          timeForToday: true,
+        })}
+      </span>
+    );
+  }
 
-      const isVisible =
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore ts(7053)
-        props[valueProp] != null && (props[showProp] || props.sortKey === name);
+  if (network && (showNetwork || sortKey === 'network')) {
+    chips.push(
+      <span key="network" className={styles.chip}>
+        {network}
+      </span>
+    );
+  }
 
-      return {
-        ...row,
-        isVisible,
-      };
-    });
-  }, [props]);
+  if (showMonitored || sortKey === 'monitored') {
+    chips.push(
+      <span key="monitored" className={styles.chip}>
+        {monitored ? translate('Monitored') : translate('Unmonitored')}
+      </span>
+    );
+  }
+
+  if (
+    qualityProfile?.name &&
+    (showQualityProfile || sortKey === 'qualityProfileId')
+  ) {
+    chips.push(
+      <span key="qualityProfile" className={styles.chip}>
+        {qualityProfile.name}
+      </span>
+    );
+  }
+
+  if (previousAiring && (showPreviousAiring || sortKey === 'previousAiring')) {
+    chips.push(
+      <span
+        key="previousAiring"
+        className={styles.chip}
+        title={formatDateTime(previousAiring, longDateFormat, timeFormat)}
+      >
+        <span className={styles.dateLabel}>{translate('Aired')}</span>
+        {getRelativeDate({
+          date: previousAiring,
+          shortDateFormat,
+          showRelativeDates,
+          timeFormat,
+          timeForToday: true,
+        })}
+      </span>
+    );
+  }
+
+  if (added && (showAdded || sortKey === 'added')) {
+    chips.push(
+      <span
+        key="added"
+        className={styles.chip}
+        title={formatDateTime(added, longDateFormat, timeFormat)}
+      >
+        <span className={styles.dateLabel}>{translate('Added')}</span>
+        {getRelativeDate({
+          date: added,
+          shortDateFormat,
+          showRelativeDates,
+          timeFormat,
+          timeForToday: true,
+        })}
+      </span>
+    );
+  }
+
+  if (showSeasonCount || sortKey === 'seasonCount') {
+    let seasons = translate('OneSeason');
+
+    if (seasonCount === 0) {
+      seasons = translate('NoSeasons');
+    } else if (seasonCount > 1) {
+      seasons = translate('CountSeasons', { count: seasonCount });
+    }
+
+    chips.push(
+      <span key="seasonCount" className={styles.chip}>
+        {seasons}
+      </span>
+    );
+  }
+
+  if (sizeOnDisk > 0 && (showSizeOnDisk || sortKey === 'sizeOnDisk')) {
+    chips.push(
+      <span key="sizeOnDisk" className={styles.chip}>
+        {formatBytes(sizeOnDisk)}
+      </span>
+    );
+  }
+
+  if (showTags && tags.length > 0) {
+    tags
+      .map((id) => tagList.find((tag) => tag.id === id))
+      .filter((tag): tag is NonNullable<typeof tag> => !!tag)
+      .sort(sortByProp('label'))
+      .forEach((tag) => {
+        chips.push(
+          <span
+            key={`tag-${tag.id}`}
+            className={classNames(styles.chip, styles.chipTag)}
+          >
+            {tag.label}
+          </span>
+        );
+      });
+  }
+
+  if (path && (showPath || sortKey === 'path')) {
+    chips.push(
+      <span key="path" className={styles.chipPath}>
+        {path}
+      </span>
+    );
+  }
+
+  if (chips.length === 0) {
+    return null;
+  }
 
   return (
-    <div className={styles.infos}>
-      {!!nextAiring && (
-        <SeriesIndexOverviewInfoRow
-          title={formatDateTime(nextAiring, longDateFormat, timeFormat)}
-          iconName={icons.SCHEDULED}
-          label={getRelativeDate(
-            nextAiring,
-            shortDateFormat,
-            showRelativeDates,
-            {
-              timeFormat,
-              timeForToday: true,
-            }
-          )}
-        />
-      )}
-
-      {rowInfo.map((row) => {
-        if (!row.isVisible) {
-          return null;
-        }
-
-        if (shownRows >= maxRows) {
-          return null;
-        }
-
-        shownRows++;
-
-        const infoRowProps = getInfoRowProps(row, props, uiSettings);
-
-        if (infoRowProps == null) {
-          return null;
-        }
-
-        return <SeriesIndexOverviewInfoRow key={row.name} {...infoRowProps} />;
-      })}
+    <div ref={ref} className={styles.chipStrip}>
+      {chips}
     </div>
   );
-}
+});
 
 export default SeriesIndexOverviewInfo;

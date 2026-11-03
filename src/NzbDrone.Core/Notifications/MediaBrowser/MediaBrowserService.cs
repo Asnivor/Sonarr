@@ -1,8 +1,12 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using System.Net;
 using FluentValidation.Results;
 using NLog;
+using NzbDrone.Common.Disk;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
+using NzbDrone.Core.Localization;
 using NzbDrone.Core.Tv;
 
 namespace NzbDrone.Core.Notifications.Emby
@@ -17,11 +21,13 @@ namespace NzbDrone.Core.Notifications.Emby
     public class MediaBrowserService : IMediaBrowserService
     {
         private readonly MediaBrowserProxy _proxy;
+        private readonly ILocalizationService _localizationService;
         private readonly Logger _logger;
 
-        public MediaBrowserService(MediaBrowserProxy proxy, Logger logger)
+        public MediaBrowserService(MediaBrowserProxy proxy, ILocalizationService localizationService, Logger logger)
         {
             _proxy = proxy;
+            _localizationService = localizationService;
             _logger = logger;
         }
 
@@ -32,28 +38,67 @@ namespace NzbDrone.Core.Notifications.Emby
 
         public void Update(MediaBrowserSettings settings, Series series, string updateType)
         {
-            _proxy.Update(settings, series.Path, updateType);
+            HashSet<string> paths;
+
+            paths = _proxy.GetPaths(settings, series);
+
+            var mappedPath = new OsPath(series.Path);
+
+            if (settings.MapTo.IsNotNullOrWhiteSpace())
+            {
+                mappedPath = new OsPath(settings.MapTo) + (mappedPath - new OsPath(settings.MapFrom));
+            }
+
+            paths.Add(mappedPath.ToString());
+
+            foreach (var path in paths)
+            {
+                _proxy.Update(settings, path, updateType);
+            }
         }
 
         public ValidationFailure Test(MediaBrowserSettings settings)
         {
             try
             {
-                _logger.Debug("Testing connection to MediaBrowser: {0}", settings.Address);
-
-                Notify(settings, "Test from Sonarr", "Success! MediaBrowser has been successfully configured!");
+                _logger.Debug("Testing connection to Emby/Jellyfin : {0}", settings.Address);
+                _proxy.TestConnection(settings);
             }
             catch (HttpException ex)
             {
                 if (ex.Response.StatusCode == HttpStatusCode.Unauthorized)
                 {
-                    return new ValidationFailure("ApiKey", "API Key is incorrect");
+                    return new ValidationFailure("ApiKey", _localizationService.GetLocalizedString("NotificationsValidationInvalidApiKey"));
+                }
+                else
+                {
+                    _logger.Trace(ex, "Error when connecting to Emby/Jellyfin");
+                    return new ValidationFailure("Host", _localizationService.GetLocalizedString("NotificationsValidationUnableToSendTestMessage", new Dictionary<string, object> { { "exceptionMessage", ex.Message } }));
                 }
             }
             catch (Exception ex)
             {
                 _logger.Error(ex, "Unable to send test message");
-                return new ValidationFailure("Host", "Unable to send test message: " + ex.Message);
+                return new ValidationFailure("Host", _localizationService.GetLocalizedString("NotificationsValidationUnableToSendTestMessage", new Dictionary<string, object> { { "exceptionMessage", ex.Message } }));
+            }
+
+            if (settings.Notify)
+            {
+                try
+                {
+                    Notify(settings, "Test from Sonarr", "Success! MediaBrowser has been successfully configured!");
+                }
+                catch (HttpException ex)
+                {
+                    if (ex.Response.StatusCode == HttpStatusCode.NotFound)
+                    {
+                        return new ValidationFailure("Notify", "Unable to send notification to Emby. If you're using Jellyfin disable 'Send Notifications'");
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
             }
 
             return null;

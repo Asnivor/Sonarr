@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { Season } from 'Series/Series';
+import translate from 'Utilities/String/translate';
 import SeasonPassSeason from './SeasonPassSeason';
-import styles from './SeasonDetails.css';
+import styles from './SeasonDetails.module.css';
 
 interface SeasonDetailsProps {
   seriesId: number;
@@ -18,12 +19,7 @@ function SeasonDetails(props: SeasonDetailsProps) {
   return (
     <div className={styles.seasons}>
       {latestSeasons.map((season) => {
-        const {
-          seasonNumber,
-          monitored,
-          statistics,
-          isSaving = false,
-        } = season;
+        const { seasonNumber, monitored, statistics } = season;
 
         return (
           <SeasonPassSeason
@@ -32,14 +28,13 @@ function SeasonDetails(props: SeasonDetailsProps) {
             seasonNumber={seasonNumber}
             monitored={monitored}
             statistics={statistics}
-            isSaving={isSaving}
           />
         );
       })}
 
       {latestSeasons.length < seasons.length ? (
         <div className={styles.truncated}>
-          Only latest 25 seasons are shown, go to details to see all seasons
+          {translate('SeasonPassTruncated')}
         </div>
       ) : null}
     </div>

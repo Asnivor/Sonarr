@@ -16,7 +16,6 @@ namespace NzbDrone.Core.Test.Datastore.Migration
             {
                 c.Insert.IntoTable("Profiles").Row(new
                 {
-                    Id = 0,
                     Name = "SDTV",
                     Cutoff = 1,
                     Items = "[ { \"quality\": 1, \"allowed\": true } ]",
@@ -24,7 +23,7 @@ namespace NzbDrone.Core.Test.Datastore.Migration
                 });
             });
 
-            var profiles = db.Query<Profile71>("SELECT Items FROM Profiles LIMIT 1");
+            var profiles = db.Query<Profile71>("SELECT \"Items\" FROM \"Profiles\" LIMIT 1");
 
             var items = profiles.First().Items;
             items.Should().HaveCount(4);

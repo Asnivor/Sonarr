@@ -1,11 +1,10 @@
 import React from 'react';
 import VirtualTableRowCell from 'Components/Table/Cells/VirtualTableRowCell';
 import Popover from 'Components/Tooltip/Popover';
-import TooltipPosition from 'Helpers/Props/TooltipPosition';
 import SeasonDetails from 'Series/Index/Select/SeasonPass/SeasonDetails';
 import { Season } from 'Series/Series';
 import translate from 'Utilities/String/translate';
-import styles from './SeasonsCell.css';
+import styles from './SeasonsCell.module.css';
 
 interface SeriesStatusCellProps {
   className: string;
@@ -31,9 +30,9 @@ function SeasonsCell(props: SeriesStatusCellProps) {
         <Popover
           className={styles.seasonCount}
           anchor={seasonCount}
-          title={translate('Season Details')}
+          title={translate('SeasonDetails')}
           body={<SeasonDetails seriesId={seriesId} seasons={seasons} />}
-          position={TooltipPosition.Left}
+          position="left"
         />
       ) : (
         seasonCount

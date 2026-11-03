@@ -1,135 +1,195 @@
 import React, { useCallback } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
 import Form from 'Components/Form/Form';
-import FormGroup from 'Components/Form/FormGroup';
-import FormInputGroup from 'Components/Form/FormInputGroup';
+import FormInput from 'Components/Form/FormInput';
+import FormInputHelpText from 'Components/Form/FormInputHelpText';
 import FormLabel from 'Components/Form/FormLabel';
+import FormRow from 'Components/Form/FormRow';
+import { EnhancedSelectInputValue } from 'Components/Form/Select/EnhancedSelectInput';
 import Button from 'Components/Link/Button';
 import ModalBody from 'Components/Modal/ModalBody';
 import ModalContent from 'Components/Modal/ModalContent';
 import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
 import { inputTypes } from 'Helpers/Props';
-import selectPosterOptions from 'Series/Index/Posters/selectPosterOptions';
-import { setSeriesPosterOption } from 'Store/Actions/seriesIndexActions';
+import {
+  setSeriesPosterOptions,
+  useSeriesPosterOptions,
+} from 'Series/seriesOptionsStore';
+import translate from 'Utilities/String/translate';
 
-const posterSizeOptions = [
-  { key: 'small', value: 'Small' },
-  { key: 'medium', value: 'Medium' },
-  { key: 'large', value: 'Large' },
+const posterSizeOptions: EnhancedSelectInputValue<string>[] = [
+  {
+    key: 'small',
+    get value() {
+      return translate('Small');
+    },
+  },
+  {
+    key: 'medium',
+    get value() {
+      return translate('Medium');
+    },
+  },
+  {
+    key: 'large',
+    get value() {
+      return translate('Large');
+    },
+  },
+];
+
+const showStatusOptions: EnhancedSelectInputValue<string>[] = [
+  {
+    key: 'deleted',
+    get value() {
+      return translate('Deleted');
+    },
+  },
+  {
+    key: 'continuing',
+    get value() {
+      return translate('Continuing');
+    },
+  },
+  {
+    key: 'upcoming',
+    get value() {
+      return translate('Upcoming');
+    },
+  },
+  {
+    key: 'ended',
+    get value() {
+      return translate('Ended');
+    },
+  },
 ];
 
 interface SeriesIndexPosterOptionsModalContentProps {
   onModalClose(...args: unknown[]): unknown;
 }
 
-function SeriesIndexPosterOptionsModalContent(
-  props: SeriesIndexPosterOptionsModalContentProps
-) {
-  const { onModalClose } = props;
-
-  const posterOptions = useSelector(selectPosterOptions);
-
+function SeriesIndexPosterOptionsModalContent({
+  onModalClose,
+}: SeriesIndexPosterOptionsModalContentProps) {
   const {
     detailedProgressBar,
     size,
     showTitle,
     showMonitored,
     showQualityProfile,
+    showTags,
     showSearchAction,
-  } = posterOptions;
-
-  const dispatch = useDispatch();
+    showStatuses,
+  } = useSeriesPosterOptions();
 
   const onPosterOptionChange = useCallback(
     ({ name, value }: { name: string; value: unknown }) => {
-      dispatch(setSeriesPosterOption({ [name]: value }));
+      setSeriesPosterOptions({ [name]: value });
     },
-    [dispatch]
+    []
   );
 
   return (
     <ModalContent onModalClose={onModalClose}>
-      <ModalHeader>Poster Options</ModalHeader>
-
+      <ModalHeader>{translate('PosterOptions')}</ModalHeader>
       <ModalBody>
         <Form>
-          <FormGroup>
-            <FormLabel>Poster Size</FormLabel>
+          <FormRow>
+            <FormLabel>{translate('PosterSize')}</FormLabel>
 
-            <FormInputGroup
+            <FormInput
               type={inputTypes.SELECT}
               name="size"
               value={size}
               values={posterSizeOptions}
               onChange={onPosterOptionChange}
             />
-          </FormGroup>
+          </FormRow>
 
-          <FormGroup>
-            <FormLabel>Detailed Progress Bar</FormLabel>
-
-            <FormInputGroup
+          <FormRow>
+            <FormLabel>{translate('DetailedProgressBar')}</FormLabel>
+            <FormInputHelpText
+              text={translate('DetailedProgressBarHelpText')}
+            />
+            <FormInput
               type={inputTypes.CHECK}
               name="detailedProgressBar"
               value={detailedProgressBar}
-              helpText="Show text on progress bar"
               onChange={onPosterOptionChange}
             />
-          </FormGroup>
+          </FormRow>
 
-          <FormGroup>
-            <FormLabel>Show Title</FormLabel>
-
-            <FormInputGroup
+          <FormRow>
+            <FormLabel>{translate('ShowTitle')}</FormLabel>
+            <FormInputHelpText text={translate('ShowSeriesTitleHelpText')} />
+            <FormInput
               type={inputTypes.CHECK}
               name="showTitle"
               value={showTitle}
-              helpText="Show series title under poster"
               onChange={onPosterOptionChange}
             />
-          </FormGroup>
+          </FormRow>
 
-          <FormGroup>
-            <FormLabel>Show Monitored</FormLabel>
-
-            <FormInputGroup
+          <FormRow>
+            <FormLabel>{translate('ShowMonitored')}</FormLabel>
+            <FormInputHelpText text={translate('ShowMonitoredHelpText')} />
+            <FormInput
               type={inputTypes.CHECK}
               name="showMonitored"
               value={showMonitored}
-              helpText="Show monitored status under poster"
               onChange={onPosterOptionChange}
             />
-          </FormGroup>
+          </FormRow>
 
-          <FormGroup>
-            <FormLabel>Show Quality Profile</FormLabel>
-
-            <FormInputGroup
+          <FormRow>
+            <FormLabel>{translate('ShowQualityProfile')}</FormLabel>
+            <FormInputHelpText text={translate('ShowQualityProfileHelpText')} />
+            <FormInput
               type={inputTypes.CHECK}
               name="showQualityProfile"
               value={showQualityProfile}
-              helpText="Show quality profile under poster"
               onChange={onPosterOptionChange}
             />
-          </FormGroup>
+          </FormRow>
 
-          <FormGroup>
-            <FormLabel>Show Search</FormLabel>
+          <FormRow>
+            <FormLabel>{translate('ShowTags')}</FormLabel>
+            <FormInputHelpText text={translate('ShowTagsHelpText')} />
+            <FormInput
+              type={inputTypes.CHECK}
+              name="showTags"
+              value={showTags}
+              onChange={onPosterOptionChange}
+            />
+          </FormRow>
 
-            <FormInputGroup
+          <FormRow>
+            <FormLabel>{translate('ShowSearch')}</FormLabel>
+            <FormInputHelpText text={translate('ShowSearchHelpText')} />
+            <FormInput
               type={inputTypes.CHECK}
               name="showSearchAction"
               value={showSearchAction}
-              helpText="Show search button on hover"
               onChange={onPosterOptionChange}
             />
-          </FormGroup>
+          </FormRow>
+
+          <FormRow>
+            <FormLabel>{translate('ShowStatuses')}</FormLabel>
+            <FormInputHelpText text={translate('ShowStatusesHelpText')} />
+            <FormInput
+              type={inputTypes.SELECT}
+              name="showStatuses"
+              value={showStatuses}
+              values={showStatusOptions}
+              onChange={onPosterOptionChange}
+            />
+          </FormRow>
         </Form>
       </ModalBody>
-
       <ModalFooter>
-        <Button onPress={onModalClose}>Close</Button>
+        <Button onPress={onModalClose}>{translate('Close')}</Button>
       </ModalFooter>
     </ModalContent>
   );

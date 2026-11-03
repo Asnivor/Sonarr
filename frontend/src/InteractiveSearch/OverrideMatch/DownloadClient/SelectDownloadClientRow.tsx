@@ -1,6 +1,7 @@
 import React, { useCallback } from 'react';
 import Link from 'Components/Link/Link';
-import styles from './SelectDownloadClientRow.css';
+import translate from 'Utilities/String/translate';
+import styles from './SelectDownloadClientRow.module.css';
 
 interface SelectSeasonRowProps {
   id: number;
@@ -23,7 +24,7 @@ function SelectDownloadClientRow(props: SelectSeasonRowProps) {
       onPress={onSeasonSelectWrapper}
     >
       <div>{name}</div>
-      <div>Priority: {priority}</div>
+      <div>{translate('PrioritySettings', { priority })}</div>
     </Link>
   );
 }

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Threading;
 using FizzWare.NBuilder;
 using Moq;
 using NUnit.Framework;
@@ -23,8 +24,8 @@ namespace NzbDrone.Core.Test.IndexerTests
             _series = Builder<Series>.CreateNew().Build();
 
             Mocker.GetMock<IHttpClient>()
-                .Setup(o => o.Execute(It.Is<HttpRequest>(v => v.Method == HttpMethod.Get)))
-                .Returns<HttpRequest>(r => new HttpResponse(r, new HttpHeader(), "<xml></xml>"));
+                .Setup(o => o.ExecuteAsync(It.Is<HttpRequest>(v => v.Method == HttpMethod.Get)))
+                .ReturnsAsync((HttpRequest r, CancellationToken _) => new HttpResponse(r, new HttpHeader(), "<xml></xml>"));
         }
 
         private void WithIndexer(bool paging, int resultCount)
@@ -67,7 +68,7 @@ namespace NzbDrone.Core.Test.IndexerTests
 
             Subject.Fetch(new SeasonSearchCriteria { Series = _series, SceneTitles = new List<string> { _series.Title } });
 
-            Mocker.GetMock<IHttpClient>().Verify(v => v.Execute(It.IsAny<HttpRequest>()), Times.Once());
+            Mocker.GetMock<IHttpClient>().Verify(v => v.ExecuteAsync(It.IsAny<HttpRequest>()), Times.Once());
         }
 
         [Test]
@@ -77,7 +78,7 @@ namespace NzbDrone.Core.Test.IndexerTests
 
             Subject.Fetch(new SeasonSearchCriteria { Series = _series, SceneTitles = new List<string> { _series.Title } });
 
-            Mocker.GetMock<IHttpClient>().Verify(v => v.Execute(It.IsAny<HttpRequest>()), Times.Once());
+            Mocker.GetMock<IHttpClient>().Verify(v => v.ExecuteAsync(It.IsAny<HttpRequest>()), Times.Once());
         }
 
         [Test]
@@ -87,7 +88,7 @@ namespace NzbDrone.Core.Test.IndexerTests
 
             Subject.Fetch(new SeasonSearchCriteria { Series = _series, SceneTitles = new List<string> { _series.Title } });
 
-            Mocker.GetMock<IHttpClient>().Verify(v => v.Execute(It.IsAny<HttpRequest>()), Times.Exactly(10));
+            Mocker.GetMock<IHttpClient>().Verify(v => v.ExecuteAsync(It.IsAny<HttpRequest>()), Times.Exactly(10));
         }
     }
 }

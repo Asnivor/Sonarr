@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using FizzWare.NBuilder;
 using FluentAssertions;
 using Moq;
@@ -9,6 +10,7 @@ using NzbDrone.Common.Disk;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.Clients.Nzbget;
 using NzbDrone.Core.Exceptions;
+using NzbDrone.Core.Localization;
 using NzbDrone.Core.RemotePathMappings;
 using NzbDrone.Test.Common;
 
@@ -340,13 +342,33 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.NzbgetTests
         }
 
         [Test]
-        public void Download_should_return_unique_id()
+        public void should_pass_script_status_to_history_message()
+        {
+            Dictionary<string, object> tokens = null;
+
+            Mocker.GetMock<ILocalizationService>()
+                  .Setup(s => s.GetLocalizedString("NzbgetHistoryItemMessage", It.IsAny<Dictionary<string, object>>()))
+                  .Callback<string, Dictionary<string, object>>((_, t) => tokens = t)
+                  .Returns("message");
+
+            _completed.ScriptStatus = "WARNING";
+
+            GivenQueue(null);
+            GivenHistory(_completed);
+
+            Subject.GetItems();
+
+            tokens.Should().Contain("scriptStatus", "WARNING");
+        }
+
+        [Test]
+        public async Task Download_should_return_unique_id()
         {
             GivenSuccessfulDownload();
 
             var remoteEpisode = CreateRemoteEpisode();
 
-            var id = Subject.Download(remoteEpisode, CreateIndexer());
+            var id = await Subject.Download(remoteEpisode, CreateIndexer());
 
             id.Should().NotBeNullOrEmpty();
         }
@@ -358,7 +380,7 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.NzbgetTests
 
             var remoteEpisode = CreateRemoteEpisode();
 
-            Assert.Throws<DownloadClientRejectedReleaseException>(() => Subject.Download(remoteEpisode, CreateIndexer()));
+            Assert.ThrowsAsync<DownloadClientRejectedReleaseException>(async () => await Subject.Download(remoteEpisode, CreateIndexer()));
         }
 
         [Test]

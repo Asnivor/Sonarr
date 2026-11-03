@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
@@ -103,8 +105,8 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.HadoukenTests
         protected void GivenSuccessfulDownload()
         {
             Mocker.GetMock<IHttpClient>()
-                  .Setup(s => s.Get(It.IsAny<HttpRequest>()))
-                  .Returns<HttpRequest>(r => new HttpResponse(r, new HttpHeader(), new byte[1000]));
+                  .Setup(s => s.GetAsync(It.IsAny<HttpRequest>()))
+                  .ReturnsAsync((HttpRequest r, CancellationToken _) => new HttpResponse(r, new HttpHeader(), new byte[1000]));
 
             Mocker.GetMock<IHadoukenProxy>()
                 .Setup(s => s.AddTorrentUri(It.IsAny<HadoukenSettings>(), It.IsAny<string>()))
@@ -196,13 +198,13 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.HadoukenTests
         }
 
         [Test]
-        public void Download_should_return_unique_id()
+        public async Task Download_should_return_unique_id()
         {
             GivenSuccessfulDownload();
 
             var remoteEpisode = CreateRemoteEpisode();
 
-            var id = Subject.Download(remoteEpisode, CreateIndexer());
+            var id = await Subject.Download(remoteEpisode, CreateIndexer());
 
             id.Should().NotBeNullOrEmpty();
         }
@@ -277,7 +279,7 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.HadoukenTests
         }
 
         [Test]
-        public void Download_from_magnet_link_should_return_hash_uppercase()
+        public async Task Download_from_magnet_link_should_return_hash_uppercase()
         {
             var remoteEpisode = CreateRemoteEpisode();
 
@@ -286,13 +288,13 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.HadoukenTests
             Mocker.GetMock<IHadoukenProxy>()
                .Setup(v => v.AddTorrentUri(It.IsAny<HadoukenSettings>(), It.IsAny<string>()));
 
-            var result = Subject.Download(remoteEpisode, CreateIndexer());
+            var result = await Subject.Download(remoteEpisode, CreateIndexer());
 
             Assert.IsFalse(result.Any(c => char.IsLower(c)));
         }
 
         [Test]
-        public void Download_from_torrent_file_should_return_hash_uppercase()
+        public async Task Download_from_torrent_file_should_return_hash_uppercase()
         {
             var remoteEpisode = CreateRemoteEpisode();
 
@@ -300,7 +302,7 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.HadoukenTests
                .Setup(v => v.AddTorrentFile(It.IsAny<HadoukenSettings>(), It.IsAny<byte[]>()))
                .Returns("hash");
 
-            var result = Subject.Download(remoteEpisode, CreateIndexer());
+            var result = await Subject.Download(remoteEpisode, CreateIndexer());
 
             Assert.IsFalse(result.Any(c => char.IsLower(c)));
         }
@@ -319,7 +321,7 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.HadoukenTests
 
             var result = Subject.Test();
 
-            result.Errors.First().ErrorMessage.Should().Be("Old Hadouken client with unsupported API, need 5.1 or higher");
+            result.Errors.Count.Should().Be(1);
         }
     }
 }

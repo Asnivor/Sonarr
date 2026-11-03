@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Newtonsoft.Json;
 
 namespace NzbDrone.Core.Indexers.HDBits
@@ -7,20 +8,16 @@ namespace NzbDrone.Core.Indexers.HDBits
     {
         [JsonProperty(Required = Required.Always)]
         public string Username { get; set; }
+
         [JsonProperty(Required = Required.Always)]
         public string Passkey { get; set; }
 
         public string Hash { get; set; }
-
         public string Search { get; set; }
-
-        public int[] Category { get; set; }
-
-        public int[] Codec { get; set; }
-
-        public int[] Medium { get; set; }
-
-        public int[] Origin { get; set; }
+        public IEnumerable<int> Category { get; set; }
+        public IEnumerable<int> Codec { get; set; }
+        public IEnumerable<int> Medium { get; set; }
+        public int? Origin { get; set; }
 
         [JsonProperty(PropertyName = "imdb")]
         public ImdbInfo ImdbInfo { get; set; }
@@ -33,12 +30,16 @@ namespace NzbDrone.Core.Indexers.HDBits
 
         [JsonProperty(PropertyName = "snatched_only")]
         public bool? SnatchedOnly { get; set; }
+
         public int? Limit { get; set; }
         public int? Page { get; set; }
 
         public TorrentQuery Clone()
         {
-            return MemberwiseClone() as TorrentQuery;
+            var other = (TorrentQuery)MemberwiseClone();
+            other.ImdbInfo = ImdbInfo?.Clone();
+            other.TvdbInfo = TvdbInfo?.Clone();
+            return other;
         }
     }
 
@@ -59,7 +60,6 @@ namespace NzbDrone.Core.Indexers.HDBits
         public string Name { get; set; }
 
         [JsonProperty(PropertyName = "times_completed")]
-
         public uint TimesCompleted { get; set; }
 
         public long Size { get; set; }
@@ -107,6 +107,8 @@ namespace NzbDrone.Core.Indexers.HDBits
         public int? Year { get; set; }
         public string[] Genres { get; set; }
         public float? Rating { get; set; }
+
+        public ImdbInfo Clone() => (ImdbInfo)MemberwiseClone();
     }
 
     public class TvdbInfo
@@ -114,6 +116,8 @@ namespace NzbDrone.Core.Indexers.HDBits
         public int? Id { get; set; }
         public int? Season { get; set; }
         public int? Episode { get; set; }
+
+        public TvdbInfo Clone() => (TvdbInfo)MemberwiseClone();
     }
 
     public enum StatusCode

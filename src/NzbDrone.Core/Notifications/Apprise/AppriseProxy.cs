@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using FluentValidation.Results;
@@ -6,27 +7,30 @@ using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
 using NzbDrone.Common.Serializer;
+using NzbDrone.Core.Localization;
 
 namespace NzbDrone.Core.Notifications.Apprise
 {
     public interface IAppriseProxy
     {
-        void SendNotification(string title, string message, AppriseSettings settings);
+        void SendNotification(string title, string message, string posterUrl, AppriseSettings settings);
         ValidationFailure Test(AppriseSettings settings);
     }
 
     public class AppriseProxy : IAppriseProxy
     {
         private readonly IHttpClient _httpClient;
+        private readonly ILocalizationService _localizationService;
         private readonly Logger _logger;
 
-        public AppriseProxy(IHttpClient httpClient, Logger logger)
+        public AppriseProxy(IHttpClient httpClient, ILocalizationService localizationService, Logger logger)
         {
             _httpClient = httpClient;
+            _localizationService = localizationService;
             _logger = logger;
         }
 
-        public void SendNotification(string title, string message, AppriseSettings settings)
+        public void SendNotification(string title, string message, string posterUrl, AppriseSettings settings)
         {
             var payload = new ApprisePayload
             {
@@ -57,6 +61,11 @@ namespace NzbDrone.Core.Notifications.Apprise
                 payload.Tag = settings.Tags.Join(",");
             }
 
+            if (settings.IncludePoster && posterUrl.IsNotNullOrWhiteSpace())
+            {
+                payload.Attachment = posterUrl;
+            }
+
             if (settings.AuthUsername.IsNotNullOrWhiteSpace() || settings.AuthPassword.IsNotNullOrWhiteSpace())
             {
                 requestBuilder.NetworkCredential = new BasicNetworkCredential(settings.AuthUsername, settings.AuthPassword);
@@ -82,34 +91,35 @@ namespace NzbDrone.Core.Notifications.Apprise
         {
             const string title = "Sonarr - Test Notification";
             const string body = "Success! You have properly configured your apprise notification settings.";
+            const string posterUrl = "https://raw.githubusercontent.com/Sonarr/Sonarr/develop/Logo/128.png";
 
             try
             {
-                SendNotification(title, body, settings);
+                SendNotification(title, body, posterUrl, settings);
             }
             catch (AppriseException ex) when (ex.InnerException is HttpException httpException)
             {
                 if (httpException.Response.StatusCode == HttpStatusCode.Unauthorized)
                 {
-                    _logger.Error(ex, $"HTTP Auth credentials are invalid: {0}", ex.Message);
-                    return new ValidationFailure("AuthUsername", $"HTTP Auth credentials are invalid: {ex.Message}");
+                    _logger.Error(ex, "HTTP Auth credentials are invalid: {0}", ex.Message);
+                    return new ValidationFailure("AuthUsername", _localizationService.GetLocalizedString("NotificationsValidationInvalidHttpCredentials", new Dictionary<string, object> { { "exceptionMessage", ex.Message } }));
                 }
 
                 if (httpException.Response.Content.IsNotNullOrWhiteSpace())
                 {
                     var error = Json.Deserialize<AppriseError>(httpException.Response.Content);
 
-                    _logger.Error(ex, $"Unable to send test message. Response from API: {0}", error.Error);
-                    return new ValidationFailure(string.Empty, $"Unable to send test message. Response from API: {error.Error}");
+                    _logger.Error(ex, "Unable to send test message. Response from API: {0}", error.Error);
+                    return new ValidationFailure(string.Empty, _localizationService.GetLocalizedString("NotificationsValidationUnableToSendTestMessageApiResponse", new Dictionary<string, object> { { "error", error.Error } }));
                 }
 
                 _logger.Error(ex, "Unable to send test message. Server connection failed: ({0}) {1}", httpException.Response.StatusCode, ex.Message);
-                return new ValidationFailure("Url", $"Unable to connect to Apprise API. Server connection failed: ({httpException.Response.StatusCode}) {ex.Message}");
+                return new ValidationFailure("Url", _localizationService.GetLocalizedString("NotificationsValidationUnableToConnectToApi", new Dictionary<string, object> { { "service", "Apprise" }, { "responseCode", httpException.Response.StatusCode }, { "exceptionMessage", ex.Message } }));
             }
             catch (Exception ex)
             {
                 _logger.Error(ex, "Unable to send test message: {0}", ex.Message);
-                return new ValidationFailure("Url", $"Unable to send test message: {ex.Message}");
+                return new ValidationFailure("Url", _localizationService.GetLocalizedString("NotificationsValidationUnableToSendTestMessage", new Dictionary<string, object> { { "exceptionMessage", ex.Message } }));
             }
 
             return null;

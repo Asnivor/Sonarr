@@ -1,6 +1,8 @@
 using System;
 using System.Linq;
 using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
@@ -26,15 +28,15 @@ namespace NzbDrone.Core.Test.IndexerTests.FileListTests
         }
 
         [Test]
-        public void should_parse_recent_feed_from_FileList()
+        public async Task should_parse_recent_feed_from_FileList()
         {
             var recentFeed = ReadAllText(@"Files/Indexers/FileList/RecentFeed.json");
 
             Mocker.GetMock<IHttpClient>()
-                .Setup(o => o.Execute(It.Is<HttpRequest>(v => v.Method == HttpMethod.Get)))
-                .Returns<HttpRequest>(r => new HttpResponse(r, new HttpHeader(), recentFeed));
+                .Setup(o => o.ExecuteAsync(It.Is<HttpRequest>(v => v.Method == HttpMethod.Get)))
+                .ReturnsAsync((HttpRequest r, CancellationToken _) => new HttpResponse(r, new HttpHeader { { "Content-Type", "application/json" } }, recentFeed));
 
-            var releases = Subject.FetchRecent();
+            var releases = await Subject.FetchRecent();
 
             releases.Should().HaveCount(2);
             releases.First().Should().BeOfType<TorrentInfo>();

@@ -78,7 +78,8 @@ namespace NzbDrone.Common.Extensions
             return result;
         }
 
-        public static void AddIfNotNull<TSource>(this List<TSource> source, TSource item)
+        #nullable enable
+        public static void AddIfNotNull<TSource>(this List<TSource> source, TSource? item)
         {
             if (item == null)
             {
@@ -87,6 +88,7 @@ namespace NzbDrone.Common.Extensions
 
             source.Add(item);
         }
+        #nullable disable
 
         public static bool Empty<TSource>(this IEnumerable<TSource> source)
         {
@@ -126,9 +128,9 @@ namespace NzbDrone.Common.Extensions
 
         private static IEnumerable<T> InternalDropLast<T>(IEnumerable<T> source, int n)
         {
-            Queue<T> buffer = new Queue<T>(n + 1);
+            var buffer = new Queue<T>(n + 1);
 
-            foreach (T x in source)
+            foreach (var x in source)
             {
                 buffer.Enqueue(x);
 
@@ -147,11 +149,6 @@ namespace NzbDrone.Common.Extensions
         public static string ConcatToString<TSource>(this IEnumerable<TSource> source, Func<TSource, string> predicate, string separator = ", ")
         {
             return string.Join(separator, source.Select(predicate));
-        }
-
-        public static HashSet<T> ToHashSet<T>(this IEnumerable<T> source, IEqualityComparer<T> comparer = null)
-        {
-            return new HashSet<T>(source, comparer);
         }
     }
 }

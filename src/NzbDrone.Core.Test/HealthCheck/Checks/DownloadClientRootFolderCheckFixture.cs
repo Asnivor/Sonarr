@@ -6,6 +6,7 @@ using NzbDrone.Common.Disk;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.Clients;
 using NzbDrone.Core.HealthCheck.Checks;
+using NzbDrone.Core.Localization;
 using NzbDrone.Core.RootFolders;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Test.Common;
@@ -54,6 +55,10 @@ namespace NzbDrone.Core.Test.HealthCheck.Checks
             Mocker.GetMock<IDiskProvider>()
                   .Setup(x => x.FolderWritable(It.IsAny<string>()))
                   .Returns(true);
+
+            Mocker.GetMock<ILocalizationService>()
+                .Setup(s => s.GetLocalizedString(It.IsAny<string>()))
+                .Returns("Some Warning Message");
         }
 
         private void GivenRootFolder(string folder)
@@ -72,9 +77,22 @@ namespace NzbDrone.Core.Test.HealthCheck.Checks
         }
 
         [Test]
+        public void should_return_warning_if_downloading_inside_root_folder()
+        {
+            var rootFolderPath = "c:\\Test".AsOsAgnostic();
+            var downloadRootPath = "c:\\Test\\Downloads".AsOsAgnostic();
+
+            GivenRootFolder(rootFolderPath);
+
+            _clientStatus.OutputRootFolders = new List<OsPath> { new(downloadRootPath) };
+
+            Subject.Check().ShouldBeWarning();
+        }
+
+        [Test]
         public void should_return_ok_if_not_downloading_to_root_folder()
         {
-            string rootFolderPath = "c:\\Test2".AsOsAgnostic();
+            var rootFolderPath = "c:\\Test2".AsOsAgnostic();
 
             GivenRootFolder(rootFolderPath);
 
@@ -82,7 +100,7 @@ namespace NzbDrone.Core.Test.HealthCheck.Checks
         }
 
         [Test]
-        [TestCaseSource("DownloadClientExceptions")]
+        [TestCaseSource(nameof(DownloadClientExceptions))]
         public void should_return_ok_if_client_throws_downloadclientexception(Exception ex)
         {
             _downloadClient.Setup(s => s.GetStatus())

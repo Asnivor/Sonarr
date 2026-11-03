@@ -6,6 +6,7 @@ using NLog;
 using NzbDrone.Common.EnsureThat;
 using NzbDrone.Common.Http.Proxy;
 using NzbDrone.Core.Configuration.Events;
+using NzbDrone.Core.ImportLists;
 using NzbDrone.Core.Languages;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.EpisodeImport;
@@ -54,11 +55,11 @@ namespace NzbDrone.Core.Configuration
         public void SaveConfigDictionary(Dictionary<string, object> configValues)
         {
             var allWithDefaults = AllWithDefaults();
+            var hasUpdated = false;
 
             foreach (var configValue in configValues)
             {
-                object currentValue;
-                allWithDefaults.TryGetValue(configValue.Key, out currentValue);
+                allWithDefaults.TryGetValue(configValue.Key, out var currentValue);
                 if (currentValue == null || configValue.Value == null)
                 {
                     continue;
@@ -68,11 +69,15 @@ namespace NzbDrone.Core.Configuration
 
                 if (!equal)
                 {
+                    hasUpdated = true;
                     SetValue(configValue.Key, configValue.Value.ToString());
                 }
             }
 
-            _eventAggregator.PublishEvent(new ConfigSavedEvent());
+            if (hasUpdated)
+            {
+                _eventAggregator.PublishEvent(new ConfigSavedEvent());
+            }
         }
 
         public bool IsDefined(string key)
@@ -145,6 +150,13 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("AutoRedownloadFailed", value); }
         }
 
+        public bool AutoRedownloadFailedFromInteractiveSearch
+        {
+            get { return GetValueBoolean("AutoRedownloadFailedFromInteractiveSearch", true); }
+
+            set { SetValue("AutoRedownloadFailedFromInteractiveSearch", value); }
+        }
+
         public bool CreateEmptySeriesFolders
         {
             get { return GetValueBoolean("CreateEmptySeriesFolders", false); }
@@ -179,6 +191,13 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("DownloadClientHistoryLimit", value); }
         }
 
+        public bool SkipFreeSpaceCheckWhenGrabbing
+        {
+            get { return GetValueBoolean("SkipFreeSpaceCheckWhenGrabbing", false); }
+
+            set { SetValue("SkipFreeSpaceCheckWhenGrabbing", value); }
+        }
+
         public bool SkipFreeSpaceCheckWhenImporting
         {
             get { return GetValueBoolean("SkipFreeSpaceCheckWhenImporting", false); }
@@ -205,6 +224,20 @@ namespace NzbDrone.Core.Configuration
             get { return GetValueBoolean("EnableMediaInfo", true); }
 
             set { SetValue("EnableMediaInfo", value); }
+        }
+
+        public bool UseScriptImport
+        {
+            get { return GetValueBoolean("UseScriptImport", false); }
+
+            set { SetValue("UseScriptImport", value); }
+        }
+
+        public string ScriptImportPath
+        {
+            get { return GetValue("ScriptImportPath"); }
+
+            set { SetValue("ScriptImportPath", value); }
         }
 
         public bool ImportExtraFiles
@@ -235,6 +268,24 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("EpisodeTitleRequired", value); }
         }
 
+        public string UserRejectedExtensions
+        {
+            get { return GetValue("UserRejectedExtensions", string.Empty); }
+            set { SetValue("UserRejectedExtensions", value); }
+        }
+
+        public SeasonPackUpgradeType SeasonPackUpgrade
+        {
+            get { return GetValueEnum("SeasonPackUpgrade", SeasonPackUpgradeType.All); }
+            set { SetValue("SeasonPackUpgrade", value); }
+        }
+
+        public double SeasonPackUpgradeThreshold
+        {
+            get { return GetValueDouble("SeasonPackUpgradeThreshold", 100.0); }
+            set { SetValue("SeasonPackUpgradeThreshold", value); }
+        }
+
         public bool SetPermissionsLinux
         {
             get { return GetValueBoolean("SetPermissionsLinux", false); }
@@ -254,6 +305,18 @@ namespace NzbDrone.Core.Configuration
             get { return GetValue("ChownGroup", ""); }
 
             set { SetValue("ChownGroup", value); }
+        }
+
+        public ListSyncLevelType ListSyncLevel
+        {
+            get { return GetValueEnum("ListSyncLevel", ListSyncLevelType.Disabled); }
+            set { SetValue("ListSyncLevel", value); }
+        }
+
+        public int ListSyncTag
+        {
+            get { return GetValueInt("ListSyncTag"); }
+            set { SetValue("ListSyncTag", value); }
         }
 
         public int FirstDayOfWeek
@@ -291,6 +354,13 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("TimeFormat", value); }
         }
 
+        public string TimeZone
+        {
+            get { return GetValue("TimeZone", ""); }
+
+            set { SetValue("TimeZone", value); }
+        }
+
         public bool ShowRelativeDates
         {
             get { return GetValueBoolean("ShowRelativeDates", true); }
@@ -305,11 +375,25 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("EnableColorImpairedMode", value); }
         }
 
+        public string HeaderColor
+        {
+            get { return GetValue("HeaderColor", "fullColor"); }
+
+            set { SetValue("HeaderColor", value); }
+        }
+
         public int UILanguage
         {
             get { return GetValueInt("UILanguage", (int)Language.English); }
 
             set { SetValue("UILanguage", value); }
+        }
+
+        public int PreferredMetadataLanguage
+        {
+            get { return GetValueInt("PreferredMetadataLanguage", (int)Language.English); }
+
+            set { SetValue("PreferredMetadataLanguage", value); }
         }
 
         public bool CleanupMetadataImages
@@ -356,6 +440,12 @@ namespace NzbDrone.Core.Configuration
 
         public string ApplicationUrl => GetValue("ApplicationUrl", string.Empty);
 
+        public bool TrustCgnatIpAddresses
+        {
+            get { return GetValueBoolean("TrustCgnatIpAddresses", false); }
+            set { SetValue("TrustCgnatIpAddresses", value); }
+        }
+
         private string GetValue(string key)
         {
             return GetValue(key, string.Empty);
@@ -371,6 +461,11 @@ namespace NzbDrone.Core.Configuration
             return Convert.ToInt32(GetValue(key, defaultValue));
         }
 
+        private double GetValueDouble(string key, double defaultValue = 0)
+        {
+            return Convert.ToDouble(GetValue(key, defaultValue), CultureInfo.InvariantCulture);
+        }
+
         private T GetValueEnum<T>(string key, T defaultValue)
         {
             return (T)Enum.Parse(typeof(T), GetValue(key, defaultValue), true);
@@ -383,9 +478,7 @@ namespace NzbDrone.Core.Configuration
 
             EnsureCache();
 
-            string dbValue;
-
-            if (_cache.TryGetValue(key, out dbValue) && dbValue != null && !string.IsNullOrEmpty(dbValue))
+            if (_cache.TryGetValue(key, out var dbValue) && dbValue != null && !string.IsNullOrEmpty(dbValue))
             {
                 return dbValue;
             }
@@ -408,6 +501,11 @@ namespace NzbDrone.Core.Configuration
         private void SetValue(string key, int value)
         {
             SetValue(key, value.ToString());
+        }
+
+        private void SetValue(string key, double value)
+        {
+            SetValue(key, value.ToString(CultureInfo.InvariantCulture));
         }
 
         private void SetValue(string key, Enum value)
